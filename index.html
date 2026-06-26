@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trợ Lý Quản Trò Ma Sói - Werewolf Moderator Assistant</title>
+    <meta name="description" content="Ứng dụng hỗ trợ quản trò Ma Sói chuyên nghiệp, theo dõi đêm ngày, trạng thái người chơi và tự động tính toán logic.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Cinzel:wght@500;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="logo">
+                <i data-lucide="skull" class="icon-danger animate-pulse"></i>
+                <h1 class="font-cinzel">MA SÓI</h1>
+                <span class="subtitle">Moderator Assistant</span>
+            </div>
+            <div class="header-actions" style="display: flex; gap: 8px;">
+                <button id="btn-show-rules" class="btn btn-secondary btn-sm" title="Xem luật chơi và trình tự đêm">
+                    <i data-lucide="book-open"></i> Luật & Trình tự
+                </button>
+                <button id="btn-reset-game" class="btn btn-secondary btn-sm" title="Khởi động lại toàn bộ trò chơi">
+                    <i data-lucide="rotate-ccw"></i> Reset Game
+                </button>
+            </div>
+        </header>
+
+        <div class="app-layout">
+            <!-- SIDEBAR TRÁI: DANH SÁCH NGƯỜI CHƠI -->
+            <aside class="sidebar-left glass-panel">
+                <div class="panel-header">
+                    <h2 class="panel-title"><i data-lucide="users"></i> Người chơi (<span id="player-count">0</span>)</h2>
+                </div>
+                <div class="player-list-container">
+                    <div id="player-list" class="player-list-scroll">
+                        <!-- Danh sách người chơi sẽ được render bằng JS -->
+                        <div class="empty-state">
+                            <i data-lucide="user-plus"></i>
+                            <p>Chưa có người chơi nào. Hãy nhập tên ở phần cấu hình.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Trạng thái nhanh phe cánh -->
+                <div class="game-summary-box glass-panel-nested">
+                    <div class="summary-item">
+                        <span class="label text-danger">Phe Sói:</span>
+                        <span id="wolf-alive-count" class="value text-danger">0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="label text-success">Phe Dân:</span>
+                        <span id="villager-alive-count" class="value text-success">0</span>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- KHU VỰC TRUNG TÂM: NỘI DUNG CHÍNH (DYNAMIC PHASES) -->
+            <main class="main-content">
+                <!-- PHASE 1: CẤU HÌNH TRÒ CHƠI -->
+                <section id="phase-setup" class="game-phase glass-panel active">
+                    <div class="phase-header">
+                        <h2>Bước 1: Thiết lập Trò chơi</h2>
+                        <p>Thêm người chơi và lựa chọn các chức năng tham gia.</p>
+                    </div>
+
+                    <div class="setup-grid">
+                        <!-- Thêm người chơi -->
+                        <div class="setup-card glass-panel-nested">
+                            <h3><i data-lucide="user-plus"></i> Nhập danh sách người chơi</h3>
+                            <div class="input-group">
+                                <input type="text" id="input-player-name" placeholder="Nhập tên người chơi...">
+                                <button id="btn-add-player" class="btn btn-primary"><i data-lucide="plus"></i> Thêm</button>
+                            </div>
+                            <div class="quick-add-section">
+                                <span class="quick-label">Thêm nhanh mẫu:</span>
+                                <div class="quick-btn-group">
+                                    <button class="btn-chip" onclick="quickAddPlayers(8)">8 người</button>
+                                    <button class="btn-chip" onclick="quickAddPlayers(10)">10 người</button>
+                                    <button class="btn-chip" onclick="quickAddPlayers(12)">12 người</button>
+                                    <button class="btn-chip" onclick="quickAddPlayers(15)">15 người</button>
+                                </div>
+                            </div>
+                            <div id="setup-player-list" class="setup-player-chips">
+                                <!-- Danh sách chip người chơi để xóa nhanh -->
+                            </div>
+                        </div>
+
+                        <!-- Chọn chức năng (Roles) -->
+                        <div class="setup-card glass-panel-nested">
+                            <h3><i data-lucide="shield"></i> Chọn chức năng tham gia (<span id="selected-role-count">0</span>)</h3>
+                            <div class="roles-filter-bar mt-1 mb-2 flex-between gap-2" style="width: 100%; display: flex; gap: 8px;">
+                                <input type="text" id="input-search-roles" placeholder="Tìm kiếm chức năng..." style="padding: 6px 12px; font-size: 0.85rem; flex: 1;">
+                                <button id="btn-toggle-extended-roles" type="button" class="btn btn-secondary btn-sm" style="white-space: nowrap;">Hiển thị thêm</button>
+                            </div>
+                            <div class="roles-grid" id="roles-selector-container">
+                                <!-- Các checkbox vai trò sẽ được tạo từ JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setup-actions">
+                        <button id="btn-start-assign" class="btn btn-accent btn-large">
+                            <i data-lucide="shuffle"></i> Phát chức năng & Bắt đầu
+                        </button>
+                    </div>
+                </section>
+
+                <!-- PHASE 2: CẤP PHÁT / XÁC NHẬN VAI TRÒ -->
+                <section id="phase-assign" class="game-phase glass-panel">
+                    <div class="phase-header">
+                        <h2>Bước 2: Gán chức năng</h2>
+                        <p>Kiểm tra vai trò của từng người chơi hoặc gán thủ công nếu muốn.</p>
+                    </div>
+
+                    <div class="assign-container glass-panel-nested">
+                        <table class="assign-table">
+                            <thead>
+                                <tr>
+                                    <th>Người chơi</th>
+                                    <th>Chức năng hiện tại</th>
+                                    <th>Thay đổi nhanh</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assign-table-body">
+                                <!-- JS render -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="setup-actions flex-between">
+                        <button id="btn-back-to-setup" class="btn btn-secondary"><i data-lucide="arrow-left"></i> Quay lại cấu hình</button>
+                        <button id="btn-confirm-game" class="btn btn-accent btn-large">Vào Đêm Đầu Tiên <i data-lucide="moon"></i></button>
+                    </div>
+                </section>
+
+                <!-- PHASE 3: VÒNG ĐÊM (NIGHT PHASE) -->
+                <section id="phase-night" class="game-phase glass-panel">
+                    <div class="phase-header flex-between">
+                        <div>
+                            <h2 class="text-indigo"><i data-lucide="moon" class="animate-pulse"></i> Đêm Thứ <span id="night-number">1</span></h2>
+                            <p>Hãy gọi các chức năng thức dậy theo trình tự bên dưới.</p>
+                        </div>
+                        <div class="night-status-badge">
+                            Trạng thái: Ban Đêm
+                        </div>
+                    </div>
+
+                    <!-- Trình tự gọi chức năng (Checklist) -->
+                    <div class="night-flow-container">
+                        <!-- Cột các bước chức năng -->
+                        <div class="night-steps" id="night-steps-list">
+                            <!-- JS render các bước hành động ban đêm -->
+                        </div>
+
+                        <!-- Cột chi tiết hành động đang chọn -->
+                        <div class="night-action-detail glass-panel-nested" id="night-action-workspace">
+                            <div class="empty-action-state">
+                                <i data-lucide="sparkles" class="text-muted"></i>
+                                <p>Chọn một bước hành động ở bên trái để tiến hành nhập dữ liệu</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="setup-actions flex-between mt-4">
+                        <button id="btn-skip-night" class="btn btn-secondary"><i data-lucide="eye-off"></i> Bỏ qua Đêm này</button>
+                        <button id="btn-end-night" class="btn btn-accent btn-large">
+                            Bình Minh Thức Giấc <i data-lucide="sun"></i>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- PHASE 4: VÒNG NGÀY (DAY PHASE) -->
+                <section id="phase-day" class="game-phase glass-panel">
+                    <div class="phase-header flex-between">
+                        <div>
+                            <h2 class="text-warning"><i data-lucide="sun" class="animate-spin-slow"></i> Ngày Thứ <span id="day-number">1</span></h2>
+                            <p>Tuyên bố kết quả đêm qua và tiến hành thảo luận, bỏ phiếu treo cổ.</p>
+                        </div>
+                        <div class="day-status-badge">
+                            Trạng thái: Ban Ngày
+                        </div>
+                    </div>
+
+                    <div class="day-grid">
+                        <!-- Thông báo đêm qua -->
+                        <div class="day-card glass-panel-nested">
+                            <h3 class="text-danger"><i data-lucide="bell"></i> Thông báo từ Quản trò</h3>
+                            <div id="night-results-announcement" class="announcement-content">
+                                <!-- Kết quả đêm qua sẽ hiện ở đây -->
+                            </div>
+                        </div>
+
+                        <!-- Hẹn giờ thảo luận -->
+                        <div class="day-card glass-panel-nested flex-column align-center justify-center">
+                            <h3><i data-lucide="timer"></i> Đồng hồ thảo luận</h3>
+                            <div class="timer-display" id="timer-display">05:00</div>
+                            <div class="timer-controls">
+                                <button id="btn-timer-start" class="btn btn-success btn-sm"><i data-lucide="play"></i> Bắt đầu</button>
+                                <button id="btn-timer-pause" class="btn btn-warning btn-sm"><i data-lucide="pause"></i> Tạm dừng</button>
+                                <button id="btn-timer-reset" class="btn btn-secondary btn-sm"><i data-lucide="rotate-ccw"></i> Reset</button>
+                            </div>
+                            <div class="timer-quick-settings mt-2">
+                                <button class="btn-chip" onclick="setTimerDuration(180)">3 phút</button>
+                                <button class="btn-chip" onclick="setTimerDuration(300)">5 phút</button>
+                                <button class="btn-chip" onclick="setTimerDuration(420)">7 phút</button>
+                            </div>
+                            <!-- Cài đặt giờ thủ công -->
+                            <div class="timer-custom-settings mt-3 flex-between gap-2" style="display: flex; gap: 8px; width: 100%; max-width: 220px;">
+                                <input type="number" id="input-timer-minutes" placeholder="Nhập số phút..." min="1" max="60" style="padding: 6px; text-align: center; flex: 1;">
+                                <button id="btn-set-custom-timer" type="button" class="btn btn-primary btn-sm" style="white-space: nowrap;">Đặt giờ</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hành động treo cổ ban ngày -->
+                    <div class="day-card glass-panel-nested mt-3">
+                        <h3><i data-lucide="gavel"></i> Tòa án Treo cổ dân làng</h3>
+                        <p class="subtitle">Chọn người bị bỏ phiếu nhiều nhất để đưa lên giàn treo:</p>
+                        <div class="vote-action-container mt-2">
+                            <select id="select-hanged-player" class="form-select">
+                                <option value="">-- Không ai bị treo cổ --</option>
+                            </select>
+                            <button id="btn-hang-player" class="btn btn-danger"><i data-lucide="gavel"></i> Treo cổ</button>
+                        </div>
+                    </div>
+
+                    <div class="setup-actions flex-between mt-3">
+                        <button id="btn-next-night" class="btn btn-accent btn-large">Tiếp tục qua Đêm tiếp theo <i data-lucide="moon"></i></button>
+                    </div>
+                </section>
+            </main>
+
+            <!-- SIDEBAR PHẢI: LOGS -->
+            <aside class="sidebar-right glass-panel" style="padding: 16px;">
+                <div class="panel-header">
+                    <h2 class="panel-title"><i data-lucide="scroll"></i> Nhật ký ván chơi</h2>
+                </div>
+                <div class="logs-scroll" id="game-logs" style="flex: 1; overflow-y: auto;">
+                    <div class="log-item info">
+                        <span class="log-time">[Hệ thống]</span> Hãy thiết lập game và thêm người chơi để bắt đầu.
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- MODAL CHIẾN THẮNG -->
+    <div id="victory-modal" class="modal">
+        <div class="modal-content glass-panel animate-zoom">
+            <div class="modal-header">
+                <h2 id="victory-title" class="font-cinzel text-accent">PHE DÂN THẮNG CUỘC!</h2>
+            </div>
+            <div class="modal-body text-center">
+                <i id="victory-icon" data-lucide="trophy" class="victory-icon-large text-accent animate-bounce"></i>
+                <p id="victory-message" class="mt-2">Toàn bộ sói đã bị tiêu diệt. Dân làng giành chiến thắng vẻ vang!</p>
+            </div>
+            <div class="modal-footer justify-center">
+                <button id="btn-modal-restart" class="btn btn-accent"><i data-lucide="rotate-ccw"></i> Chơi trận mới</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL GIẢI THÍCH CHI TIẾT CHỨC NĂNG -->
+    <div id="role-detail-modal" class="modal">
+        <div class="modal-content glass-panel animate-zoom" style="max-width: 450px;">
+            <div class="modal-header flex-between" style="border-bottom: 1px solid var(--panel-border); padding-bottom: 10px;">
+                <h2 id="role-detail-title" class="font-cinzel text-accent">Tên chức năng</h2>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-close-role-detail" style="padding: 4px 8px;">X</button>
+            </div>
+            <div class="modal-body mt-2" style="max-height: 350px; overflow-y: auto; padding-right: 5px;">
+                <p id="role-detail-desc" style="font-size: 0.9rem; line-height: 1.6; color: var(--text-primary); white-space: pre-line;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL LUẬT CHƠI & TRÌNH TỰ ĐÊM -->
+    <div id="rules-modal" class="modal">
+        <div class="modal-content glass-panel animate-zoom" style="max-width: 500px;">
+            <div class="modal-header flex-between" style="border-bottom: 1px solid var(--panel-border); padding-bottom: 10px;">
+                <h2 class="font-cinzel text-accent" style="display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="book-open"></i> Luật & Trình tự
+                </h2>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-close-rules" style="padding: 4px 8px;">X</button>
+            </div>
+            <div class="modal-body mt-2" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                <h4 style="font-size: 1rem; color: var(--color-accent); font-weight: 600;">Trình tự gọi đêm chuẩn mở rộng:</h4>
+                <ol class="rules-order-list" style="padding-left: 20px; font-size: 0.85rem; margin-top: 8px; margin-bottom: 16px; line-height: 1.6;">
+                    <li><strong>Cupid (Thần tình yêu):</strong> Ghép đôi 2 người (Chỉ đêm 1).</li>
+                    <li><strong>Bảo vệ:</strong> Chọn 1 người để bảo vệ khỏi Sói. Không bảo vệ trùng đêm trước.</li>
+                    <li><strong>Ma Sói & Sói Điên:</strong> Thống nhất cắn người. Sói Điên cắn thêm (nếu đủ điều kiện).</li>
+                    <li><strong>Sói Trắng:</strong> Thức dậy cắn 1 Ma Sói khác (2 đêm lẻ 1 lần).</li>
+                    <li><strong>Phù Thủy:</strong> Biết ai bị cắn, chọn cứu hoặc cắn độc (mỗi bình dùng 1 lần/game).</li>
+                    <li><strong>Tiên Tri:</strong> Soi 1 người để biết thuộc phe Sói hay phe Dân.</li>
+                    <li><strong>Hồ Ly:</strong> Soi 3 người đứng cạnh nhau để tìm Sói.</li>
+                    <li><strong>Người Thổi Sáo:</strong> Thôi miên 2 người chơi mới.</li>
+                </ol>
+                
+                <h4 style="font-size: 1rem; color: var(--color-accent); font-weight: 600; margin-top: 12px;">Điều kiện thắng:</h4>
+                <ul style="padding-left: 20px; font-size: 0.85rem; margin-top: 8px; line-height: 1.6;">
+                    <li><strong>Phe Người tốt:</strong> Tiêu diệt toàn bộ Ma Sói và các phe thứ ba độc hại.</li>
+                    <li><strong>Phe Ma Sói:</strong> Số lượng Ma Sói bằng hoặc nhiều hơn số người dân còn sống.</li>
+                    <li><strong>Phe Cặp đôi khác phe:</strong> Cả hai người yêu nhau sống sót cuối cùng.</li>
+                    <li><strong>Sói Trắng / Người Thổi Sáo / Chú Hề:</strong> Đạt điều kiện thắng độc lập của chức năng đó.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
