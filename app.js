@@ -508,7 +508,11 @@ let gameState = {
         rusty_knight: 0,
         apprentice_seer: 0,
         angel: 0
-    }
+    },
+
+    // --- Chức năng tùy chỉnh do Quản trò tự tạo ---
+    customRoles: [],          // Mảng định nghĩa các vai trò tùy chỉnh
+    selectedCustomRoles: {}   // { [customRoleId]: count } - số lượng trong ván
 };
 
 // --- Bộ đếm thời gian (Timer) ---
@@ -561,6 +565,11 @@ function restoreGameState(state) {
     }
 
     renderPlayerSidebarList();
+
+    // Khôi phục danh sách custom roles
+    if (typeof renderCustomRolesList === 'function') {
+        renderCustomRolesList();
+    }
 
     // Cập nhật lại logs
     const logsContainer = document.getElementById('game-logs');
@@ -788,7 +797,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 rolesExplainList.innerHTML = '';
                 activeRoles.forEach(roleKey => {
-                    const roleDef = ROLES_DEFINITION[roleKey];
+                    if (roleKey === 'unassigned') return;
+                    let roleDef = ROLES_DEFINITION[roleKey];
+                    
+                    if (!roleDef && gameState.customRoles) {
+                        const cr = gameState.customRoles.find(r => r.id === roleKey);
+                        if (cr) {
+                            roleDef = {
+                                name: '✦ ' + cr.name,
+                                color: cr.color,
+                                icon: 'star',
+                                desc: cr.desc || '(Chức năng tùy chỉnh)'
+                            };
+                        }
+                    }
+
                     if (roleDef) {
                         const item = document.createElement('div');
                         item.style.padding = '8px 12px';
@@ -1170,7 +1193,13 @@ function renderAssignTable() {
         let roleName = 'Chưa gán';
         let badgeStyle = 'background: #333; color: #fff';
         if (player.role && player.role !== 'unassigned') {
-            const roleDef = ROLES_DEFINITION[player.role] || ROLES_DEFINITION.villager;
+            let roleDef = ROLES_DEFINITION[player.role];
+            if (!roleDef && gameState.customRoles) {
+                const cr = gameState.customRoles.find(r => r.id === player.role);
+                if (cr) roleDef = { name: cr.name, color: cr.color };
+            }
+            if (!roleDef) roleDef = ROLES_DEFINITION.villager;
+            
             roleName = roleDef.name;
             badgeStyle = `background: rgba(${hexToRgb(roleDef.color)}, 0.15); color: ${roleDef.color}`;
         }
@@ -1196,6 +1225,15 @@ function renderAssignTable() {
                 selectHtml += `<div class="custom-select-item" data-role="${roleKey}" data-name="${role.name.toLowerCase()}" onclick="window.selectPlayerRole('${player.id}', '${roleKey}')">${role.name}</div>`;
             }
         });
+        // Thêm custom roles vào dropdown gán chức năng
+        if (gameState.customRoles) {
+            gameState.customRoles.forEach(cr => {
+                const crCount = gameState.selectedCustomRoles[cr.id] || cr.count || 0;
+                if (crCount > 0) {
+                    selectHtml += `<div class="custom-select-item" data-role="${cr.id}" data-name="${cr.name.toLowerCase()}" onclick="window.selectPlayerRole('${player.id}', '${cr.id}')" style="border-left:2px solid ${cr.color};padding-left:8px;">✦ ${cr.name}</div>`;
+                }
+            });
+        }
         selectHtml += `</div></div>`;
 
 
@@ -1256,7 +1294,11 @@ document.addEventListener('click', function (e) {
                 if (p.role === 'unassigned' || !p.role) {
                     input.value = '';
                 } else {
-                    const roleDef = ROLES_DEFINITION[p.role];
+                    let roleDef = ROLES_DEFINITION[p.role];
+                    if (!roleDef && gameState.customRoles) {
+                        const cr = gameState.customRoles.find(r => r.id === p.role);
+                        if (cr) roleDef = { name: cr.name };
+                    }
                     if (roleDef) input.value = roleDef.name;
                 }
             }
@@ -1270,7 +1312,16 @@ window.updatePlayerRole = function (playerId, newRole) {
 
     player.role = newRole;
 
-    addLog(`Đã chuyển chức năng của ${player.name} thành ${ROLES_DEFINITION[newRole].name}`);
+    // Lấy tên vai trò: ưu tiên ROLES_DEFINITION, fallback sang customRoles
+    let roleName = 'Không rõ';
+    if (ROLES_DEFINITION[newRole]) {
+        roleName = ROLES_DEFINITION[newRole].name;
+    } else if (gameState.customRoles) {
+        const cr = gameState.customRoles.find(r => r.id === newRole);
+        if (cr) roleName = cr.name;
+    }
+
+    addLog(`Đã chuyển chức năng của ${player.name} thành ${roleName}`);
     renderAssignTable();
     renderPlayerSidebarList();
 };
@@ -1299,6 +1350,11 @@ function renderPlayerSidebarList() {
         let roleDef = null;
         if (p.role) {
             roleDef = ROLES_DEFINITION[p.role];
+            // Fallback sang custom role
+            if (!roleDef && gameState.customRoles) {
+                const cr = gameState.customRoles.find(r => r.id === p.role);
+                if (cr) roleDef = { name: cr.name, color: cr.color, team: cr.team, icon: 'star' };
+            }
         }
 
         if (p.isAlive) {
@@ -1342,8 +1398,17 @@ function renderPlayerSidebarList() {
                     <button class="btn btn-secondary btn-sm" onclick="togglePlayerNotes('${p.id}')" title="Ghi chú nhanh">
                         <i data-lucide="edit-3" style="width:12px; height:12px"></i>
                     </button>
+                    <button class="btn btn-secondary btn-sm" onclick="openOverrideModal('${p.id}')" title="Quyền Năng Quản Trò">
+                        <i data-lucide="settings" style="width:12px; height:12px"></i>
+                    </button>
                 </div>
-            ` : ''}
+            ` : `
+                <div class="player-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="openOverrideModal('${p.id}')" title="Quyền Năng Quản Trò">
+                        <i data-lucide="settings" style="width:12px; height:12px"></i>
+                    </button>
+                </div>
+            `}
         `;
 
         if (p.notes) {
@@ -1496,6 +1561,12 @@ function buildNightChecklist() {
 
         if (!isRoleInGame) return;
 
+        // Với custom role: lấy roleDef từ customRoles
+        if (roleKey.startsWith('custom_') && !ROLES_DEFINITION[roleKey]) {
+            const cr = gameState.customRoles && gameState.customRoles.find(r => r.id === roleKey);
+            if (!cr) return;
+        }
+
         const stepBtn = document.createElement('button');
         stepBtn.className = 'night-step-btn';
         stepBtn.id = `step-btn-${roleKey}`;
@@ -1503,7 +1574,11 @@ function buildNightChecklist() {
         let roleDef = ROLES_DEFINITION[roleKey];
         if (roleKey === 'elder_confirm') {
             roleDef = ROLES_DEFINITION['elder'];
+        } else if (!roleDef && roleKey.startsWith('custom_')) {
+            const cr = gameState.customRoles && gameState.customRoles.find(r => r.id === roleKey);
+            if (cr) roleDef = { name: cr.name, icon: 'star', color: cr.color, desc: cr.desc || '' };
         }
+        if (!roleDef) return;
 
         let statusIcon = '<i data-lucide="circle" class="text-muted"></i>';
         if (!isRoleAlive) {
@@ -1549,22 +1624,38 @@ function selectNightStep(roleKey) {
 
     const workspace = document.getElementById('night-action-workspace');
 
+    // Nhận diện custom role
     let roleDef = ROLES_DEFINITION[roleKey];
     if (roleKey === 'elder_confirm') {
         roleDef = ROLES_DEFINITION['elder'];
+    } else if (!roleDef && roleKey.startsWith('custom_')) {
+        const cr = gameState.customRoles && gameState.customRoles.find(r => r.id === roleKey);
+        if (cr) roleDef = { id: cr.id, name: cr.name, icon: 'star', color: cr.color, desc: cr.desc || '' };
     }
 
     // Hiển thị script (ngay cả khi chức năng đã chết)
     const scriptQuote = document.getElementById('script-main-quote');
     const scriptNote = document.getElementById('script-note');
-    if (scriptQuote && MODERATOR_SCRIPTS[gameState.ruleMode]) {
-        const scripts = MODERATOR_SCRIPTS[gameState.ruleMode][roleKey];
-        if (scripts) {
-            scriptQuote.innerText = scripts.night;
-            scriptNote.innerHTML = scripts.note ? `<i data-lucide="info" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> ${scripts.note}` : '';
-        } else {
-            scriptQuote.innerText = `Lượt của ${roleDef.name}`;
-            scriptNote.innerHTML = '';
+    if (scriptQuote) {
+        // Ưu tiên: custom role script → MODERATOR_SCRIPTS → fallback tên role
+        if (roleKey.startsWith('custom_') && gameState.customRoles) {
+            const cr = gameState.customRoles.find(r => r.id === roleKey);
+            if (cr && cr.nightScript) {
+                scriptQuote.innerText = cr.nightScript;
+                if (scriptNote) scriptNote.innerHTML = '';
+            } else {
+                scriptQuote.innerText = `Lượt của ${roleDef ? roleDef.name : roleKey}`;
+                if (scriptNote) scriptNote.innerHTML = '';
+            }
+        } else if (MODERATOR_SCRIPTS[gameState.ruleMode]) {
+            const scripts = MODERATOR_SCRIPTS[gameState.ruleMode][roleKey];
+            if (scripts) {
+                scriptQuote.innerText = scripts.night;
+                if (scriptNote) scriptNote.innerHTML = scripts.note ? `<i data-lucide="info" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> ${scripts.note}` : '';
+            } else {
+                scriptQuote.innerText = `Lượt của ${roleDef ? roleDef.name : roleKey}`;
+                if (scriptNote) scriptNote.innerHTML = '';
+            }
         }
         lucide.createIcons();
     }
@@ -1646,6 +1737,7 @@ function selectNightStep(roleKey) {
     else if (roleKey === 'fox') renderFoxWorkspace();
     else if (roleKey === 'piper') renderPiperWorkspace();
     else if (roleKey === 'wild_child') renderWildChildWorkspace();
+    else if (roleKey.startsWith('custom_') && typeof renderCustomRoleWorkspace === 'function') renderCustomRoleWorkspace(roleKey);
     else renderGenericWorkspace(roleKey);
 
     lucide.createIcons();
@@ -2462,6 +2554,11 @@ function startDayPhase(deathsTonight) {
     } else {
         checkWinConditions();
     }
+
+    // Nhắc hiệu ứng chết của custom passive roles
+    if (typeof triggerCustomRoleDeathEffects === 'function') {
+        triggerCustomRoleDeathEffects(deathsTonight);
+    }
 }
 
 function renderHangedSelector() {
@@ -2513,8 +2610,19 @@ function handleHangPlayer() {
 
         target.isAlive = false;
         checkWildChildIdolDeath(target.id);
-        const roleDef = ROLES_DEFINITION[target.role] || ROLES_DEFINITION.villager;
+        // Lấy roleDef: ưu tiên ROLES_DEFINITION, fallback sang customRoles
+        let roleDef = ROLES_DEFINITION[target.role];
+        if (!roleDef && gameState.customRoles) {
+            const cr = gameState.customRoles.find(r => r.id === target.role);
+            if (cr) roleDef = { name: cr.name };
+        }
+        roleDef = roleDef || ROLES_DEFINITION.villager;
         addLog(`Dân làng đã bỏ phiếu treo cổ [${target.name}] (${roleDef.name}).`, 'kill');
+
+        // Nhắc hiệu ứng chết custom passive role khi bị treo cổ
+        if (typeof triggerCustomRoleDeathEffects === 'function') {
+            triggerCustomRoleDeathEffects([target.id]);
+        }
 
         if (target.role === 'elder') {
             gameState.elderKilledByVillagers = true;
@@ -2727,6 +2835,11 @@ function checkWinConditions() {
     if (wolvesAlive >= (villagersAlive + whiteWolvesAlive)) {
         showVictoryModal('PHE MA SÓI THẮNG CUỘC! 🩸', 'Sói đã áp đảo dân làng. Đêm nay cả làng sẽ chìm trong máu.', 'skull', '#ef4444');
         return;
+    }
+
+    // Nhắc Quản trò kiểm tra điều kiện thắng của Phe Thứ Ba custom
+    if (typeof checkCustomRoleThirdPartyWinConditions === 'function') {
+        checkCustomRoleThirdPartyWinConditions();
     }
 }
 

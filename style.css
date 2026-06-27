@@ -631,18 +631,24 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 }
 
 .target-select-card.selected {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(239, 68, 68, 0.15);
     border-color: var(--color-danger);
+    box-shadow: 0 0 0 2px var(--color-danger);
+    transform: scale(1.02);
 }
 
 .target-select-card.selected-positive {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(16, 185, 129, 0.15);
     border-color: var(--color-success);
+    box-shadow: 0 0 0 2px var(--color-success);
+    transform: scale(1.02);
 }
 
 .target-select-card.selected-neutral {
-    background: rgba(59, 130, 246, 0.1);
+    background: rgba(59, 130, 246, 0.15);
     border-color: var(--color-info);
+    box-shadow: 0 0 0 2px var(--color-info);
+    transform: scale(1.02);
 }
 
 .target-select-card.disabled {
@@ -1232,4 +1238,62 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 
 .script-quote {
     line-height: 1.5;
+}
+
+/* --- CUSTOM ROLES --- */
+.form-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.custom-roles-section {
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 14px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.custom-roles-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-role-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.custom-role-card:hover {
+    transform: translateX(3px);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+.modal-body::-webkit-scrollbar {
+    width: 5px;
+}
+.modal-body::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+}
+
+@media (max-width: 600px) {
+    .flex-col-mobile {
+        flex-direction: column !important;
+    }
+    .flex-col-mobile .btn {
+        width: 100% !important;
+        margin-top: 8px;
+    }
+    /* Đảo ngược thứ tự hiển thị để nút quan trọng (Lưu) nằm trên trên mobile */
+    .flex-col-mobile-reverse {
+        flex-direction: column-reverse !important;
+    }
+    .flex-col-mobile-reverse .btn {
+        width: 100% !important;
+        margin-top: 8px;
+    }
 }

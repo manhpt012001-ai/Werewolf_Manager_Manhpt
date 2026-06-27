@@ -168,6 +168,21 @@
             </div>
         </div>
 
+        <!-- Khu vực Chức năng Tùy chỉnh -->
+        <div class="custom-roles-section glass-panel-nested mt-3">
+            <div class="flex-between" style="margin-bottom: 12px;">
+                <h3 style="margin: 0;"><i data-lucide="plus-square"></i> Chức năng tự tạo</h3>
+                <button id="btn-open-custom-role-form" class="btn btn-secondary btn-sm">
+                    <i data-lucide="plus"></i> Thêm chức năng mới
+                </button>
+            </div>
+            <div id="custom-roles-list" class="custom-roles-list">
+                <p class="text-muted" id="custom-roles-empty" style="font-size: 0.85rem; padding: 8px 0;">
+                    Chưa có chức năng tùy chỉnh nào. Bấm "Thêm chức năng mới" để tạo.
+                </p>
+            </div>
+        </div>
+
         <div class="setup-actions">
             <button id="btn-start-assign" class="btn btn-accent btn-large">
                 <i data-lucide="arrow-right"></i> Chuyển sang Gán chức năng
@@ -475,7 +490,151 @@
         </div>
     </div>
 
+    <!-- MODAL TẠO / SỬA CHỨC NĂNG TÙY CHỈNH -->
+    <div id="custom-role-modal" class="modal">
+        <div class="modal-content glass-panel animate-zoom" style="max-width: 520px;">
+            <div class="modal-header flex-between" style="border-bottom: 1px solid var(--panel-border); padding-bottom: 10px;">
+                <h2 class="font-cinzel text-accent" style="display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="plus-square"></i>
+                    <span id="custom-role-modal-title">Thêm Chức Năng Tùy Chỉnh</span>
+                </h2>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-close-custom-role-modal" style="padding: 4px 10px;">X</button>
+            </div>
+            <div class="modal-body mt-2" style="max-height: 500px; overflow-y: auto; padding-right: 5px;">
+                <input type="hidden" id="custom-role-edit-id" value="">
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label">Tên chức năng *</label>
+                        <input type="text" id="custom-role-name" placeholder="VD: Kẻ Phản Bội..." style="width: 100%; padding: 8px; box-sizing: border-box;">
+                    </div>
+                    <div>
+                        <label class="form-label">Thuộc phe</label>
+                        <select id="custom-role-team" style="width: 100%; padding: 8px; min-height: 40px; box-sizing: border-box;">
+                            <option value="villager">Dân làng</option>
+                            <option value="wolf">Ma Sói</option>
+                            <option value="third">Phe thứ ba</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label class="form-label">Màu nhận diện</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="color" id="custom-role-color" value="#a78bfa" style="width: 44px; height: 36px; border: none; background: none; cursor: pointer; padding: 0;">
+                            <span id="custom-role-color-preview" style="font-size: 0.85rem; color: var(--text-muted);">#a78bfa</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Số lượng trong ván</label>
+                        <input type="number" id="custom-role-count" value="1" min="1" max="10" style="width: 100%; padding: 8px; box-sizing: border-box;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label class="form-label">Mô tả ngắn</label>
+                    <input type="text" id="custom-role-desc" placeholder="VD: Thức dậy ban đêm để chọn 1 mục tiêu..." style="width: 100%; padding: 8px; box-sizing: border-box;">
+                </div>
+
+                <div style="margin-bottom: 12px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 6px;">
+                    <label class="form-label" style="margin-bottom: 8px; display: block;">Loại hành động</label>
+                    <div style="display: flex; gap: 20px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                            <input type="radio" name="custom-role-action-type" id="action-type-night" value="night" checked>
+                            <i data-lucide="moon" style="width:14px;height:14px;"></i> Ban Đêm
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                            <input type="radio" name="custom-role-action-type" id="action-type-passive" value="passive">
+                            <i data-lucide="zap" style="width:14px;height:14px;"></i> Thụ Động
+                        </label>
+                    </div>
+                </div>
+
+                <div id="custom-role-night-settings">
+                    <div style="margin-bottom: 12px;">
+                        <label class="form-label">Vị trí gọi trong đêm</label>
+                        <select id="custom-role-night-position" style="width: 100%; padding: 8px; min-height: 40px; box-sizing: border-box;">
+                            <option value="before_wolf">Trước Ma Sói</option>
+                            <option value="after_wolf" selected>Sau Ma Sói</option>
+                            <option value="after_seer">Sau Tiên Tri / Phù Thủy</option>
+                            <option value="end">Cuối cùng</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 12px;">
+                        <label class="form-label">Lời Quản Trò gọi đêm</label>
+                        <textarea id="custom-role-night-script" rows="3" placeholder='"Kẻ Phản Bội dậy. Hãy chỉ ra mục tiêu đêm nay. Đi ngủ lại."' style="width: 100%; padding: 8px; resize: vertical; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary);"></textarea>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                            <input type="checkbox" id="custom-role-can-target" checked>
+                            Cho phép Quản Trò chọn mục tiêu (ghi vào nhật ký)
+                        </label>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem;">
+                            <input type="checkbox" id="custom-role-can-reveal">
+                            Quản Trò tiết lộ <strong>phe</strong> của mục tiêu (như Tiên Tri)
+                        </label>
+                        <p style="font-size: 0.78rem; color: var(--text-muted); margin: 4px 0 0 24px;">Khi chọn xong mục tiêu, màn hình sẽ hiện phe (Dân/Sói/Thứ Ba) để Quản trò ra dấu cho người chơi.</p>
+                    </div>
+                </div>
+                <div style="margin-bottom: 12px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 6px;">
+                    <label class="form-label" style="color: var(--color-warning);">Hiệu ứng Liên Kết (Khi bản thân / Mục tiêu bị chết)</label>
+                    <textarea id="custom-role-death-effect" rows="3" placeholder="VD: Khi bị cắn, mục tiêu chết theo... HOẶC Khi mục tiêu chết, mất chức năng..." style="width: 100%; padding: 8px; resize: vertical; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary); border-left: 3px solid var(--color-warning);"></textarea>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">Quản trò sẽ nhận Cảnh báo nếu người này hoặc mục tiêu của họ chết.</p>
+                </div>
+
+                <div id="custom-role-win-cond-section" style="display: none; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 6px; margin-bottom: 12px;">
+                    <label class="form-label" style="color: var(--color-warning);">Điều kiện thắng (Phe thứ ba)</label>
+                    <textarea id="custom-role-win-condition" rows="2" placeholder="VD: Thắng khi còn sống đến cuối ván..." style="width: 100%; padding: 8px; resize: vertical; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary);"></textarea>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">App sẽ nhắc Quản trò kiểm tra điều kiện này sau mỗi đêm/ngày.</p>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--panel-border);">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-custom-role" style="width: 100%;">Hủy</button>
+                <button type="button" class="btn btn-accent" id="btn-save-custom-role" style="width: 100%;"><i data-lucide="save"></i> Lưu chức năng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL OVERRIDE QUẢN TRÒ (TUỲ CHỈNH SỐNG/CHẾT/VAI TRÒ) -->
+    <div id="override-modal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2><i data-lucide="settings" style="color: var(--color-warning)"></i> Quyền Năng Quản Trò</h2>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="override-player-id">
+                <p id="override-player-name" style="font-size: 1.1rem; font-weight: bold; margin-bottom: 12px; color: var(--color-accent); text-align: center;"></p>
+                
+                <div style="margin-bottom: 12px;">
+                    <label class="form-label">Trạng thái (Sống / Chết)</label>
+                    <select id="override-player-status" style="width: 100%; padding: 8px; box-sizing: border-box;">
+                        <option value="alive">Đang Sống</option>
+                        <option value="dead">Đã Chết</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom: 16px;">
+                    <label class="form-label">Đổi Vai Trò Mới</label>
+                    <select id="override-player-role" style="width: 100%; padding: 8px; box-sizing: border-box;">
+                        <!-- Options sẽ được gen bằng JS -->
+                    </select>
+                </div>
+                <div class="glass-panel-nested p-2 text-center" style="font-size: 0.8rem; color: var(--text-muted);">
+                    <i data-lucide="alert-triangle" style="width: 14px; height: 14px; color: var(--color-warning)"></i> Tuỳ chỉnh thủ công sẽ được ghi nhận vào Nhật ký.
+                </div>
+            </div>
+            <div class="modal-footer flex-between">
+                <button class="btn btn-secondary" onclick="closeOverrideModal()">Đóng</button>
+                <button class="btn btn-warning" onclick="saveOverrideModal()"><i data-lucide="zap"></i> Áp Dụng Phép Màu</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
+    <script src="custom_roles.js"></script>
 </body>
 
 </html>
