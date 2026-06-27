@@ -77,7 +77,8 @@ function openCustomRoleModal(customRoleId) {
         f('custom-role-night-script').value = r.nightScript || '';
         f('custom-role-can-target').checked = r.canTarget !== false;
         f('custom-role-can-reveal').checked = r.canReveal === true;
-        f('custom-role-death-effect').value = r.deathEffect || '';
+        f('custom-role-self-effect').value = r.selfEffect || r.deathEffect || '';
+        f('custom-role-target-effect').value = r.targetEffect || '';
         f('custom-role-win-condition').value = r.winCondition || '';
         
         const isNight = r.actionType !== 'passive';
@@ -97,12 +98,14 @@ function openCustomRoleModal(customRoleId) {
         f('action-type-night').checked = true;
         f('action-type-passive').checked = false;
         f('custom-role-night-settings').style.display = 'block';
-        f('custom-role-passive-settings').style.display = 'none';
+        const passiveSettings = f('custom-role-passive-settings');
+        if (passiveSettings) passiveSettings.style.display = 'none';
         f('custom-role-night-position').value = 'after_wolf';
         f('custom-role-night-script').value = '';
         f('custom-role-can-target').checked = true;
         f('custom-role-can-reveal').checked = false;
-        f('custom-role-death-effect').value = '';
+        f('custom-role-self-effect').value = '';
+        f('custom-role-target-effect').value = '';
         f('custom-role-win-condition').value = '';
         f('custom-role-win-cond-section').style.display = 'none';
     }
@@ -131,7 +134,8 @@ function saveCustomRole() {
     const nightScript = f('custom-role-night-script').value.trim();
     const canTarget = f('custom-role-can-target').checked;
     const canReveal = f('custom-role-can-reveal').checked;
-    const deathEffect = f('custom-role-death-effect').value.trim();
+    const selfEffect = f('custom-role-self-effect').value.trim();
+    const targetEffect = f('custom-role-target-effect').value.trim();
     const winCondition = f('custom-role-win-condition').value.trim();
 
     if (!name) { alert('Vui lòng nhập tên chức năng!'); return; }
@@ -139,13 +143,13 @@ function saveCustomRole() {
     if (editId) {
         const existing = gameState.customRoles.find(r => r.id === editId);
         if (existing) {
-            Object.assign(existing, { name, team, color, count, desc, actionType, nightPosition, nightScript, canTarget, canReveal, deathEffect, winCondition });
+            Object.assign(existing, { name, team, color, count, desc, actionType, nightPosition, nightScript, canTarget, canReveal, selfEffect, targetEffect, winCondition });
             gameState.selectedCustomRoles[editId] = count;
         }
         addLog('Đã cập nhật chức năng tùy chỉnh: ' + name, 'info');
     } else {
         const newId = 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-        gameState.customRoles.push({ id: newId, name, team, color, count, desc, actionType, nightPosition, nightScript, canTarget, canReveal, deathEffect, winCondition, icon: 'star' });
+        gameState.customRoles.push({ id: newId, name, team, color, count, desc, actionType, nightPosition, nightScript, canTarget, canReveal, selfEffect, targetEffect, winCondition, icon: 'star' });
         gameState.selectedCustomRoles[newId] = count;
         addLog('Đã tạo chức năng tùy chỉnh: ' + name, 'info');
     }
@@ -352,11 +356,18 @@ function checkCustomRoleThirdPartyWinConditions() {
 function triggerCustomRoleDeathEffects(deadPlayerIds) {
     if (!gameState.customRoles || !deadPlayerIds || deadPlayerIds.length === 0) return;
     
-    // Helper tạo Toast
-    const createToast = (cr, title, message) => {
+    const createToast = (cr, title, message, effectText) => {
+        let container = document.getElementById('cr-toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'cr-toast-container';
+            container.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+            document.body.appendChild(container);
+        }
+
         const alertDiv = document.createElement('div');
         alertDiv.className = 'cr-alert';
-        alertDiv.style.cssText = 'position:fixed;bottom:20px;right:20px;background:rgba(30,20,50,0.95);color:var(--text-primary);padding:16px 20px;border-radius:8px;z-index:9999;max-width:90vw;width:320px;border-left:4px solid ' + cr.color + ';box-shadow:0 8px 30px rgba(0,0,0,0.5);transition:all 0.3s ease;';
+        alertDiv.style.cssText = 'background:rgba(30,20,50,0.95);color:var(--text-primary);padding:16px 20px;border-radius:8px;width:320px;max-width:90vw;border-left:4px solid ' + cr.color + ';box-shadow:0 8px 30px rgba(0,0,0,0.5);transition:all 0.3s ease;pointer-events:auto;';
         alertDiv.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
                 <div style="font-size:0.95rem;font-weight:800;color:${cr.color};">⚠️ ${title}</div>
@@ -364,11 +375,11 @@ function triggerCustomRoleDeathEffects(deadPlayerIds) {
             </div>
             <p style="margin-bottom:6px;font-size:0.85rem;">${message}</p>
             <div style="background:rgba(255,255,255,0.05);padding:8px;border-radius:4px;font-size:0.8rem;margin-bottom:8px;color:var(--text-muted);">
-                ${cr.deathEffect}
+                ${effectText}
             </div>
             <p style="font-size:0.75rem;color:var(--text-muted);margin:0;font-style:italic;">Dùng nút ⚙️ ở danh sách để thao tác thêm.</p>
         `;
-        document.body.appendChild(alertDiv);
+        container.appendChild(alertDiv);
         lucide.createIcons();
     };
 
@@ -376,16 +387,16 @@ function triggerCustomRoleDeathEffects(deadPlayerIds) {
     deadPlayerIds.forEach(id => {
         const player = gameState.players.find(p => p.id === id);
         if (!player) return;
-        const cr = gameState.customRoles.find(r => r.id === player.role && r.deathEffect);
+        const cr = gameState.customRoles.find(r => r.id === player.role && (r.selfEffect || r.deathEffect));
         if (!cr) return;
         
-        createToast(cr, 'Hiệu ứng: ' + cr.name, `<strong>${player.name}</strong> (${cr.name}) vừa chết!`);
+        createToast(cr, 'Hiệu ứng: ' + cr.name, `<strong>${player.name}</strong> (${cr.name}) vừa chết!`, cr.selfEffect || cr.deathEffect);
     });
 
     // 2. Kiểm tra Mục tiêu chết
     if (gameState.nightActions && gameState.nightActions.customTargets) {
         gameState.customRoles.forEach(cr => {
-            if (!cr.deathEffect) return;
+            if (!cr.targetEffect) return;
             const targetId = gameState.nightActions.customTargets[cr.id];
             if (!targetId || !deadPlayerIds.includes(targetId)) return;
             
@@ -396,7 +407,7 @@ function triggerCustomRoleDeathEffects(deadPlayerIds) {
             const targetPlayer = gameState.players.find(p => p.id === targetId);
             const targetName = targetPlayer ? targetPlayer.name : 'Mục tiêu';
 
-            createToast(cr, 'Mục tiêu chết: ' + cr.name, `Mục tiêu <strong>${targetName}</strong> của [${cr.name}] vừa chết!`);
+            createToast(cr, 'Mục tiêu chết: ' + cr.name, `Mục tiêu <strong>${targetName}</strong> của [${cr.name}] vừa chết!`, cr.targetEffect);
         });
     }
 }

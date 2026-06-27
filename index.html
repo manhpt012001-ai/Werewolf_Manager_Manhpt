@@ -580,9 +580,16 @@
                     </div>
                 </div>
                 <div style="margin-bottom: 12px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 6px;">
-                    <label class="form-label" style="color: var(--color-warning);">Hiệu ứng Liên Kết (Khi bản thân / Mục tiêu bị chết)</label>
-                    <textarea id="custom-role-death-effect" rows="3" placeholder="VD: Khi bị cắn, mục tiêu chết theo... HOẶC Khi mục tiêu chết, mất chức năng..." style="width: 100%; padding: 8px; resize: vertical; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary); border-left: 3px solid var(--color-warning);"></textarea>
-                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">Quản trò sẽ nhận Cảnh báo nếu người này hoặc mục tiêu của họ chết.</p>
+                    <label class="form-label" style="color: var(--color-warning); margin-bottom: 8px; display: block;">Hiệu ứng Liên Kết</label>
+                    <div style="margin-bottom: 10px;">
+                        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Thông báo khi bản thân chết / hồi sinh:</label>
+                        <textarea id="custom-role-self-effect" rows="2" placeholder="VD: Kéo theo mục tiêu cùng chết..." style="width: 100%; padding: 8px; resize: vertical; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary); border-left: 3px solid var(--color-warning);"></textarea>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px; display: block;">Thông báo khi mục tiêu chết / hồi sinh:</label>
+                        <textarea id="custom-role-target-effect" rows="2" placeholder="VD: Mất chức năng..." style="width: 100%; padding: 8px; resize: vertical; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary); border-left: 3px solid var(--color-accent);"></textarea>
+                    </div>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 8px;">Quản trò sẽ nhận thông báo riêng biệt khi sự kiện xảy ra.</p>
                 </div>
 
                 <div id="custom-role-win-cond-section" style="display: none; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 6px; margin-bottom: 12px;">
