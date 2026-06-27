@@ -444,8 +444,8 @@ const MODERATOR_SCRIPTS = {
 };
 
 const ROLE_SUGGESTIONS = {
-    8:  { wolf: 2, seer: 1, guard: 1 },
-    9:  { wolf: 2, seer: 1, guard: 1 },
+    8: { wolf: 2, seer: 1, guard: 1 },
+    9: { wolf: 2, seer: 1, guard: 1 },
     10: { wolf: 3, seer: 1, guard: 1, hunter: 1 },
     11: { wolf: 3, seer: 1, guard: 1, hunter: 1 },
     12: { wolf: 3, seer: 1, guard: 1, hunter: 1, cupid: 1 },
@@ -515,26 +515,35 @@ let gameState = {
 let timerInterval = null;
 let timerSecondsRemaining = 300;
 
+window.persistCurrentState = function () {
+    localStorage.setItem('werewolf_game_state', JSON.stringify(gameState));
+    localStorage.setItem('werewolf_game_state_history', JSON.stringify(gameStateHistory));
+};
+
 function saveGameState() {
     gameStateHistory.push(JSON.stringify(gameState));
     if (gameStateHistory.length > 20) {
         gameStateHistory.shift();
     }
+    persistCurrentState();
 }
 
-function undoLastAction() {
-    if (gameStateHistory.length === 0) {
-        alert("Không có bước nào để quay lại!");
-        return;
-    }
-
-    const previousStateStr = gameStateHistory.pop();
-    gameState = JSON.parse(previousStateStr);
-
+function restoreGameState(state) {
+    gameState = state;
     // Khôi phục giao diện dựa trên phase hiện tại
     document.getElementById('victory-modal').classList.remove('active');
 
-    if (gameState.currentPhase === 'setup') {
+    if (gameState.ruleMode) {
+        const badge = document.getElementById('current-mode-badge');
+        if (badge) {
+            badge.innerText = `Mode: ${gameState.ruleMode === 'international' ? 'Quốc Tế' : 'Việt Nam'}`;
+            badge.style.display = 'block';
+        }
+    }
+
+    if (gameState.currentPhase === 'mode-select' || !gameState.ruleMode) {
+        showPhase('phase-mode-select');
+    } else if (gameState.currentPhase === 'setup') {
         showPhase('phase-setup');
         renderSetupRoles();
         renderSetupPlayers();
@@ -555,16 +564,33 @@ function undoLastAction() {
 
     // Cập nhật lại logs
     const logsContainer = document.getElementById('game-logs');
-    logsContainer.innerHTML = '';
-    gameState.logs.forEach(log => {
-        const logItem = document.createElement('div');
-        logItem.className = `log-item ${log.type}-log`;
-        logItem.innerHTML = `<span class="log-time">[${log.time}]</span> ${log.message}`;
-        logsContainer.appendChild(logItem);
-    });
-    logsContainer.scrollTop = logsContainer.scrollHeight;
+    if (logsContainer) {
+        logsContainer.innerHTML = '';
+        gameState.logs.forEach(log => {
+            const logItem = document.createElement('div');
+            logItem.className = `log-item ${log.type}-log`;
+            logItem.innerHTML = `<span class="log-time">[${log.time}]</span> ${log.message}`;
+            logsContainer.appendChild(logItem);
+        });
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
 
     lucide.createIcons();
+}
+
+function undoLastAction() {
+    if (gameStateHistory.length === 0) {
+        alert("Không có bước nào để quay lại!");
+        return;
+    }
+
+    const previousStateStr = gameStateHistory.pop();
+    restoreGameState(JSON.parse(previousStateStr));
+
+    // Lưu lại trạng thái mới sau khi undo vào localStorage
+    localStorage.setItem('werewolf_game_state', JSON.stringify(gameState));
+    localStorage.setItem('werewolf_game_state_history', JSON.stringify(gameStateHistory));
+
     addLog("Đã quay lại bước trước đó.", "warning");
 }
 
@@ -603,12 +629,12 @@ function softResetGame() {
     showPhase('phase-mode-select'); // Bắt đầu ở màn hình chọn luật
 }
 
-window.selectRuleMode = function(mode) {
+window.selectRuleMode = function (mode) {
     gameState.ruleMode = mode;
-    
+
     // Cập nhật giao diện để ẩn phase 0 và hiện phase 1
     showPhase('phase-setup');
-    
+
     const badge = document.getElementById('current-mode-badge');
     if (badge) {
         badge.style.display = 'block';
@@ -616,16 +642,36 @@ window.selectRuleMode = function(mode) {
         badge.style.color = mode === 'international' ? 'var(--color-accent)' : 'var(--color-danger)';
         badge.style.borderColor = badge.style.color;
     }
-    
+
     addLog(`Đã chọn bộ luật: ${mode === 'international' ? 'Quốc Tế' : 'Việt Nam'}`, 'info');
-    
+
     renderSetupRoles();
     renderSetupPlayers();
     renderPlayerSidebarList();
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
+    // Thử khôi phục game từ localStorage
+    const savedState = localStorage.getItem('werewolf_game_state');
+    const savedHistory = localStorage.getItem('werewolf_game_state_history');
+
+    if (savedState) {
+        try {
+            const parsedState = JSON.parse(savedState);
+            if (savedHistory) {
+                gameStateHistory = JSON.parse(savedHistory);
+            }
+            restoreGameState(parsedState);
+        } catch (e) {
+            console.error("Lỗi khi khôi phục game state:", e);
+            localStorage.removeItem('werewolf_game_state');
+            localStorage.removeItem('werewolf_game_state_history');
+            showPhase('phase-mode-select');
+        }
+    } else {
+        showPhase('phase-mode-select');
+    }
+
     renderSetupRoles();
     renderSetupPlayers();
 
@@ -647,13 +693,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (setTimerBtn) {
         setTimerBtn.addEventListener('click', () => {
             const minutesInput = document.getElementById('input-timer-minutes');
-            const minutes = parseInt(minutesInput.value);
-            if (isNaN(minutes) || minutes < 1 || minutes > 60) {
-                alert('Vui lòng nhập số phút hợp lệ (từ 1 đến 60).');
+            const secondsInput = document.getElementById('input-timer-seconds');
+            
+            let minutes = parseInt(minutesInput.value) || 0;
+            let seconds = parseInt(secondsInput.value) || 0;
+            
+            if (minutes < 0 || seconds < 0 || seconds > 59 || (minutes === 0 && seconds === 0)) {
+                alert('Vui lòng nhập thời gian hợp lệ (Phút >= 0, Giây từ 0 đến 59, tổng thời gian > 0).');
                 return;
             }
-            setTimerDuration(minutes * 60);
-            addLog(`Đồng hồ thảo luận được đặt thành ${minutes} phút.`, 'info');
+            
+            const totalSeconds = (minutes * 60) + seconds;
+            setTimerDuration(totalSeconds);
+            
+            const formattedSec = seconds.toString().padStart(2, '0');
+            addLog(`Đồng hồ thảo luận được đặt thành ${minutes}:${formattedSec}.`, 'info');
         });
     }
 
@@ -682,14 +736,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-function renderRulesModal() {
-    const list = document.getElementById('rules-order-list');
-    const title = document.getElementById('rules-order-title');
-    if (!list || !title) return;
+    function renderRulesModal() {
+        const list = document.getElementById('rules-order-list');
+        const title = document.getElementById('rules-order-title');
+        if (!list || !title) return;
 
-    if (gameState.ruleMode === 'vietnam') {
-        title.innerText = 'Trình tự gọi đêm (Luật Việt Nam Mở rộng):';
-        list.innerHTML = `
+        if (gameState.ruleMode === 'vietnam') {
+            title.innerText = 'Trình tự gọi đêm (Luật Việt Nam Mở rộng):';
+            list.innerHTML = `
             <li><strong>Ăn Trộm:</strong> Đổi bài dư (Chỉ đêm 1).</li>
             <li><strong>Cupid (Thần tình yêu):</strong> Ghép đôi 2 người (Chỉ đêm 1).</li>
             <li><strong>Đứa trẻ hoang dã:</strong> Chọn thần tượng (Chỉ đêm 1).</li>
@@ -703,9 +757,9 @@ function renderRulesModal() {
             <li><strong>Người Thổi Sáo:</strong> Thôi miên 2 người.</li>
             <li><strong>Già Làng:</strong> Xác nhận thân phận (Chỉ đêm 1).</li>
         `;
-    } else {
-        title.innerText = 'Trình tự gọi đêm (Luật Quốc Tế Chuẩn gốc):';
-        list.innerHTML = `
+        } else {
+            title.innerText = 'Trình tự gọi đêm (Luật Quốc Tế Chuẩn gốc):';
+            list.innerHTML = `
             <li><strong>Ăn Trộm:</strong> Đổi bài dư (Chỉ đêm 1).</li>
             <li><strong>Cupid (Thần tình yêu):</strong> Ghép đôi 2 người (Chỉ đêm 1).</li>
             <li><strong>Đứa trẻ hoang dã:</strong> Chọn thần tượng (Chỉ đêm 1).</li>
@@ -717,46 +771,50 @@ function renderRulesModal() {
             <li><strong>Hồ Ly:</strong> Soi 3 người ngồi cạnh nhau.</li>
             <li><strong>Người Thổi Sáo:</strong> Thôi miên 2 người.</li>
         `;
-    }
+        }
 
-    // Hiển thị phần giải thích vai trò đang có trong ván
-    const rolesExplainContainer = document.getElementById('rules-roles-explain-container');
-    const rolesExplainList = document.getElementById('rules-roles-explain-list');
-    
-    if (rolesExplainContainer && rolesExplainList) {
-        if (!gameState.players || gameState.players.length === 0) {
-            rolesExplainContainer.style.display = 'none';
-        } else {
-            rolesExplainContainer.style.display = 'block';
-            
-            // Lọc ra các vai trò unique có trong ván
-            const activeRoles = [...new Set(gameState.players.map(p => p.role))];
-            
-            rolesExplainList.innerHTML = '';
-            activeRoles.forEach(roleKey => {
-                const roleDef = ROLES_DEFINITION[roleKey];
-                if (roleDef) {
-                    const item = document.createElement('div');
-                    item.style.padding = '8px';
-                    item.style.background = 'rgba(0, 0, 0, 0.15)';
-                    item.style.borderRadius = '4px';
-                    item.style.borderLeft = `3px solid ${roleDef.color || '#ccc'}`;
-                    item.innerHTML = `
-                        <div style="font-weight: bold; color: ${roleDef.color || 'var(--text-primary)'}; display: flex; align-items: center; gap: 6px;">
+        // Hiển thị phần giải thích vai trò đang có trong ván
+        const rolesExplainContainer = document.getElementById('rules-roles-explain-container');
+        const rolesExplainList = document.getElementById('rules-roles-explain-list');
+
+        if (rolesExplainContainer && rolesExplainList) {
+            if (!gameState.players || gameState.players.length === 0) {
+                rolesExplainContainer.style.display = 'none';
+            } else {
+                rolesExplainContainer.style.display = 'block';
+
+                // Lọc ra các vai trò unique có trong ván
+                const activeRoles = [...new Set(gameState.players.map(p => p.role))];
+
+                rolesExplainList.innerHTML = '';
+                activeRoles.forEach(roleKey => {
+                    const roleDef = ROLES_DEFINITION[roleKey];
+                    if (roleDef) {
+                        const item = document.createElement('div');
+                        item.style.padding = '8px 12px';
+                        item.style.background = 'rgba(0, 0, 0, 0.15)';
+                        item.style.borderRadius = '4px';
+                        item.style.borderLeft = `3px solid ${roleDef.color || '#ccc'}`;
+
+                        // Sử dụng gameplayDetail nếu có để hiển thị đầy đủ chi tiết như khi click vai trò, fallback về desc
+                        const detailText = roleDef.gameplayDetail || roleDef.desc;
+
+                        item.innerHTML = `
+                        <div style="font-weight: bold; color: ${roleDef.color || 'var(--text-primary)'}; display: flex; align-items: center; gap: 6px; font-size: 0.9rem;">
                             <i data-lucide="${roleDef.icon || 'user'}" style="width: 14px; height: 14px;"></i>
                             ${roleDef.name}
                         </div>
-                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">
-                            ${roleDef.desc}
+                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 6px; white-space: pre-line; line-height: 1.5;">
+                            ${detailText}
                         </div>
                     `;
-                    rolesExplainList.appendChild(item);
-                }
-            });
-            lucide.createIcons();
+                        rolesExplainList.appendChild(item);
+                    }
+                });
+                lucide.createIcons();
+            }
         }
     }
-}
 
     const btnAddPlayer = document.getElementById('btn-add-player');
     if (btnAddPlayer) btnAddPlayer.addEventListener('click', handleAddPlayer);
@@ -778,8 +836,8 @@ function renderRulesModal() {
     if (btnAutoAssign) btnAutoAssign.addEventListener('click', () => { saveGameState(); autoAssignRoles(); renderAssignTable(); renderPlayerSidebarList(); });
 
     const btnClearAssign = document.getElementById('btn-clear-assign');
-    if (btnClearAssign) btnClearAssign.addEventListener('click', () => { 
-        saveGameState(); 
+    if (btnClearAssign) btnClearAssign.addEventListener('click', () => {
+        saveGameState();
         gameState.players.forEach(p => p.role = 'unassigned');
         renderAssignTable();
         renderPlayerSidebarList();
@@ -936,6 +994,7 @@ function updateRoleCountsAndSummary() {
     gameState.selectedRoles.villager = villagerCount;
 
     document.getElementById('selected-role-count').innerText = specialRolesCount + villagerCount;
+    persistCurrentState();
 }
 
 function handleAddPlayer() {
@@ -1026,7 +1085,7 @@ window.quickAddPlayers = function (count) {
     }
 
     addLog(`Đã thêm nhanh ${numToAdd} người chơi mẫu`);
-    
+
     // Auto fill suggest roles based on total players
     if (ROLE_SUGGESTIONS[gameState.players.length]) {
         const suggestion = ROLE_SUGGESTIONS[gameState.players.length];
@@ -1034,7 +1093,7 @@ window.quickAddPlayers = function (count) {
         Object.keys(gameState.selectedRoles).forEach(k => {
             if (k !== 'villager') gameState.selectedRoles[k] = 0;
         });
-        
+
         // Apply suggestion
         Object.keys(suggestion).forEach(role => {
             if (gameState.selectedRoles[role] !== undefined) {
@@ -1043,7 +1102,7 @@ window.quickAddPlayers = function (count) {
         });
         addLog(`Đã tự động áp dụng cấu hình chức năng gợi ý cho ${gameState.players.length} người.`, 'info');
     }
-    
+
     renderSetupPlayers();
     updateRoleCountsAndSummary();
     renderSetupRoles();
@@ -1069,7 +1128,7 @@ function startAssignPhase() {
     }
 
     gameState.players.forEach(p => {
-        if(!p.role) p.role = 'unassigned';
+        if (!p.role) p.role = 'unassigned';
     });
 
     showPhase('phase-assign');
@@ -1156,16 +1215,16 @@ function renderAssignTable() {
     lucide.createIcons();
 }
 
-window.showRoleDropdown = function(playerId) {
+window.showRoleDropdown = function (playerId) {
     document.querySelectorAll('.custom-select-dropdown').forEach(el => el.style.display = 'none');
     document.getElementById(`dropdown-${playerId}`).style.display = 'block';
-    
+
     const input = document.getElementById(`input-${playerId}`);
     window.filterRoleDropdown(playerId, input.value);
     input.select();
 }
 
-window.filterRoleDropdown = function(playerId, query) {
+window.filterRoleDropdown = function (playerId, query) {
     const q = query.toLowerCase().trim();
     const dropdown = document.getElementById(`dropdown-${playerId}`);
     const items = dropdown.querySelectorAll('.custom-select-item');
@@ -1183,12 +1242,12 @@ window.filterRoleDropdown = function(playerId, query) {
     });
 }
 
-window.selectPlayerRole = function(playerId, roleKey) {
+window.selectPlayerRole = function (playerId, roleKey) {
     document.getElementById(`dropdown-${playerId}`).style.display = 'none';
     updatePlayerRole(playerId, roleKey);
 }
 
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     if (!e.target.closest('.custom-select-wrapper')) {
         document.querySelectorAll('.custom-select-dropdown').forEach(el => el.style.display = 'none');
         gameState.players.forEach(p => {
@@ -1339,6 +1398,7 @@ function showPhase(phaseId) {
     }
 
     renderPlayerSidebarList();
+    persistCurrentState();
 }
 
 function startGame() {
@@ -1346,7 +1406,7 @@ function startGame() {
         alert("Vui lòng gán chức năng cho tất cả người chơi trước khi bắt đầu!");
         return;
     }
-    
+
     gameState.nightNumber = 0;
     gameState.dayNumber = 0;
     gameState.witchHasSave = true;
@@ -1488,7 +1548,7 @@ function selectNightStep(roleKey) {
     if (activeBtn) activeBtn.classList.add('active');
 
     const workspace = document.getElementById('night-action-workspace');
-    
+
     let roleDef = ROLES_DEFINITION[roleKey];
     if (roleKey === 'elder_confirm') {
         roleDef = ROLES_DEFINITION['elder'];
@@ -1620,7 +1680,7 @@ function renderThiefWorkspace() {
     lucide.createIcons();
 }
 
-window.confirmThiefAction = function() {
+window.confirmThiefAction = function () {
     addLog(`Ăn Trộm đã hoàn tất lượt đêm đầu tiên.`, 'success');
     markStepCompleted('thief');
     goToNextActiveStep('thief');
@@ -2197,7 +2257,7 @@ function goToNextActiveStep(currentRole) {
     const currentIndex = currentOrder.indexOf(currentRole);
     for (let i = currentIndex + 1; i < currentOrder.length; i++) {
         const nextRole = currentOrder[i];
-        
+
         let isRoleInGame = false;
         if (nextRole === 'wolf') {
             const wolfRoles = ['wolf', 'wolf_cub', 'big_bad_wolf', 'white_wolf'];
@@ -2394,7 +2454,7 @@ function startDayPhase(deathsTonight) {
     renderHangedSelector();
     pauseTimer();
     updateTimerDisplay();
-    
+
     // Check nếu có thợ săn chết đêm qua
     const deadHunter = deathsTonight.map(id => gameState.players.find(p => p.id === id)).find(p => p && p.role === 'hunter');
     if (deadHunter) {
@@ -2477,7 +2537,7 @@ function handleHangPlayer() {
 
         renderPlayerSidebarList();
         renderHangedSelector();
-        
+
         if (target.role === 'hunter') {
             triggerHunterShoot(target);
         } else {
@@ -2487,7 +2547,7 @@ function handleHangPlayer() {
 }
 
 // --- SCRIPT PANEL TOGGLE ---
-window.toggleScriptPanel = function(phase) {
+window.toggleScriptPanel = function (phase) {
     const body = document.getElementById(`script-panel-body-${phase}`);
     const chevron = document.getElementById(`script-panel-chevron-${phase}`);
     if (body) {
@@ -2505,7 +2565,7 @@ function triggerHunterShoot(hunterPlayer) {
     currentHunterId = hunterPlayer.id;
     const modal = document.getElementById('hunter-modal');
     const select = document.getElementById('select-hunter-target');
-    
+
     select.innerHTML = '<option value="">-- Chọn người bị bắn --</option>';
     gameState.players.forEach(p => {
         if (p.isAlive && p.id !== hunterPlayer.id) {
@@ -2515,30 +2575,30 @@ function triggerHunterShoot(hunterPlayer) {
             select.appendChild(option);
         }
     });
-    
+
     modal.classList.add('active');
 }
 
-window.confirmHunterShoot = function() {
+window.confirmHunterShoot = function () {
     const select = document.getElementById('select-hunter-target');
     const targetId = select.value;
-    
+
     if (!targetId) {
         alert('Vui lòng chọn người bị bắn hoặc nhấn Bỏ qua!');
         return;
     }
-    
+
     const target = gameState.players.find(p => p.id === targetId);
     if (target) {
         target.isAlive = false;
         addLog(`Thợ Săn đã bắn chết [${target.name}] trước khi gục ngã!`, 'kill');
-        
+
         // Nếu người bị bắn là Già Làng
         if (target.role === 'elder') {
             gameState.elderKilledByVillagers = true;
             addLog(`CẢNH BÁO: Thợ Săn đã bắn chết Trưởng Lão, toàn bộ chức năng phe dân bị vô hiệu hóa!`, 'warning');
         }
-        
+
         // Couple suicide
         const couplePlayers = gameState.players.filter(p => p.isCouple);
         if (couplePlayers.length === 2) {
@@ -2554,14 +2614,14 @@ window.confirmHunterShoot = function() {
             }
         }
     }
-    
+
     closeHunterModal();
     renderPlayerSidebarList();
     renderHangedSelector();
     checkWinConditions();
 };
 
-window.skipHunterShoot = function() {
+window.skipHunterShoot = function () {
     addLog(`Thợ Săn chọn không bắn ai.`, 'info');
     closeHunterModal();
     checkWinConditions();
@@ -2691,6 +2751,11 @@ function showVictoryModal(title, message, icon, color) {
 function resetAllGame() {
     pauseTimer();
     gameState.ruleMode = null;
+
+    // Xóa cache localStorage khi reset toàn bộ game
+    localStorage.removeItem('werewolf_game_state');
+    localStorage.removeItem('werewolf_game_state_history');
+
     showPhase('phase-mode-select');
 
     gameState.players = [];
@@ -2755,7 +2820,7 @@ function renderWildChildWorkspace() {
     lucide.createIcons();
 }
 
-window.selectWildChildIdol = function(playerId) {
+window.selectWildChildIdol = function (playerId) {
     const wcPlayer = gameState.players.find(p => p.role === 'wild_child');
     if (wcPlayer) {
         wcPlayer.idolId = playerId;
@@ -2763,7 +2828,7 @@ window.selectWildChildIdol = function(playerId) {
     }
 }
 
-window.confirmWildChildAction = function() {
+window.confirmWildChildAction = function () {
     const wcPlayer = gameState.players.find(p => p.role === 'wild_child');
     if (wcPlayer && wcPlayer.idolId) {
         const idol = gameState.players.find(p => p.id === wcPlayer.idolId);
@@ -2808,18 +2873,18 @@ function renderApprenticeSeerWorkspace() {
     lucide.createIcons();
 }
 
-window.selectApprenticeSeerTarget = function(playerId) {
+window.selectApprenticeSeerTarget = function (playerId) {
     gameState.nightActions.apprenticeSeerTarget = playerId;
     renderApprenticeSeerWorkspace();
 }
 
-window.skipApprenticeSeerAction = function() {
+window.skipApprenticeSeerAction = function () {
     addLog(`[Ban Đêm] Tiên Tri Tập Sự không soi ai.`);
     markStepCompleted('apprentice_seer');
     goToNextActiveStep('apprentice_seer');
 }
 
-window.confirmApprenticeSeerAction = function() {
+window.confirmApprenticeSeerAction = function () {
     const targetId = gameState.nightActions.apprenticeSeerTarget;
     if (!targetId) {
         alert('Vui lòng chọn 1 mục tiêu!');
@@ -2830,10 +2895,10 @@ window.confirmApprenticeSeerAction = function() {
     if (target.role === 'lycan') team = 'wolf';
 
     let resultMsg = team === 'wolf' ? 'MA SÓI (Ngón tay xuống)' : 'DÂN LÀNG (Ngón tay lên)';
-    
+
     addLog(`[Ban Đêm] Tiên Tri Tập Sự soi [${target.name}]. Quản trò ra dấu: ${resultMsg}`, 'info');
     alert(`Kết quả soi của Tiên Tri Tập Sự: ${target.name} là phe ${resultMsg}`);
-    
+
     markStepCompleted('apprentice_seer');
     goToNextActiveStep('apprentice_seer');
 }
@@ -2841,7 +2906,7 @@ window.confirmApprenticeSeerAction = function() {
 function renderGenericWorkspace(roleKey) {
     const workspace = document.getElementById('night-action-workspace');
     const roleDef = ROLES_DEFINITION[roleKey];
-    
+
     let html = `
         <div class="action-form-title">
             <i data-lucide="${roleDef.icon}" style="color: ${roleDef.color}"></i>
@@ -2862,12 +2927,12 @@ function renderGenericWorkspace(roleKey) {
             <button class="btn btn-accent w-100" onclick="confirmGenericAction('${roleKey}')">Xác nhận Hoàn thành</button>
         </div>
     `;
-    
+
     workspace.innerHTML = html;
     lucide.createIcons();
 }
 
-window.confirmGenericAction = function(roleKey) {
+window.confirmGenericAction = function (roleKey) {
     markStepCompleted(roleKey);
     goToNextActiveStep(roleKey);
 }

@@ -312,8 +312,10 @@
                     </div>
                     <!-- Cài đặt giờ thủ công -->
                     <div class="timer-custom-settings mt-3 flex-between gap-2"
-                        style="display: flex; gap: 8px; width: 100%; max-width: 220px;">
-                        <input type="number" id="input-timer-minutes" placeholder="Nhập số phút..." min="1" max="60"
+                        style="display: flex; gap: 8px; width: 100%; max-width: 260px;">
+                        <input type="number" id="input-timer-minutes" placeholder="Phút" min="0" max="60"
+                            style="padding: 6px; text-align: center; flex: 1;">
+                        <input type="number" id="input-timer-seconds" placeholder="Giây" min="0" max="59"
                             style="padding: 6px; text-align: center; flex: 1;">
                         <button id="btn-set-custom-timer" type="button" class="btn btn-primary btn-sm"
                             style="white-space: nowrap;">Đặt giờ</button>
