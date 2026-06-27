@@ -1212,6 +1212,7 @@ function renderAssignTable() {
                        value="${player.role === 'unassigned' ? '' : roleName}" 
                        placeholder="-- Chọn hoặc gõ tìm vai trò --"
                        onfocus="window.showRoleDropdown('${player.id}')"
+                       onclick="window.showRoleDropdown('${player.id}')"
                        oninput="window.filterRoleDropdown('${player.id}', this.value)"
                        autocomplete="off">
                 <i data-lucide="chevron-down" class="custom-select-icon"></i>
@@ -1270,11 +1271,12 @@ function renderAssignTable() {
 
 window.showRoleDropdown = function (playerId) {
     document.querySelectorAll('.custom-select-dropdown').forEach(el => el.style.display = 'none');
-    document.getElementById(`dropdown-${playerId}`).style.display = 'block';
+    const dropdown = document.getElementById(`dropdown-${playerId}`);
+    if (dropdown) dropdown.style.display = 'block';
 
     const input = document.getElementById(`input-${playerId}`);
-    window.filterRoleDropdown(playerId, input.value);
-    input.select();
+    window.filterRoleDropdown(playerId, '');
+    if (input) input.select();
 }
 
 window.filterRoleDropdown = function (playerId, query) {
