@@ -534,7 +534,7 @@
 
                 <div style="margin-bottom: 12px;">
                     <label class="form-label">Mô tả ngắn</label>
-                    <input type="text" id="custom-role-desc" placeholder="VD: Thức dậy ban đêm để chọn 1 mục tiêu..." style="width: 100%; padding: 8px; box-sizing: border-box;">
+                    <textarea id="custom-role-desc" rows="3" placeholder="VD: Thức dậy ban đêm để chọn 1 mục tiêu..." style="width: 100%; padding: 8px; resize: vertical; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary);"></textarea>
                 </div>
 
                 <div style="margin-bottom: 12px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 6px;">
@@ -625,9 +625,13 @@
                 
                 <div style="margin-bottom: 16px;">
                     <label class="form-label">Đổi Vai Trò Mới</label>
-                    <select id="override-player-role" style="width: 100%; padding: 8px; box-sizing: border-box;">
-                        <!-- Options sẽ được gen bằng JS -->
-                    </select>
+                    <input type="hidden" id="override-player-role">
+                    <div style="position: relative;">
+                        <input type="text" id="override-role-search" placeholder="-- Chọn hoặc gõ tìm vai trò --" style="width: 100%; padding: 8px 30px 8px 10px; box-sizing: border-box; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary); cursor: pointer;" autocomplete="off">
+                        <i data-lucide="chevron-down" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted); pointer-events: none;"></i>
+                        <div id="override-role-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background: #1e1b4b; border: 1px solid var(--panel-border); border-radius: 4px; z-index: 1000; margin-top: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                        </div>
+                    </div>
                 </div>
                 <div class="glass-panel-nested p-2 text-center" style="font-size: 0.8rem; color: var(--text-muted);">
                     <i data-lucide="alert-triangle" style="width: 14px; height: 14px; color: var(--color-warning)"></i> Tuỳ chỉnh thủ công sẽ được ghi nhận vào Nhật ký.

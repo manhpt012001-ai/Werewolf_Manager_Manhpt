@@ -602,6 +602,7 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
     color: var(--text-muted);
     font-size: 0.85rem;
     margin-bottom: 20px;
+    white-space: pre-line;
 }
 
 .action-options-grid {
@@ -1130,8 +1131,9 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .custom-select-item:last-child {
     border-bottom: none;
 }
-.custom-select-item:hover {
-    background: rgba(129, 140, 248, 0.2);
+.custom-select-item:hover, .custom-select-item.selected {
+    background: rgba(167, 139, 250, 0.2);
+    color: var(--color-accent);
 }
 
 /* --- NEW CSS CHO PHASE 0 VÀ SCRIPT PANEL --- */
@@ -1296,4 +1298,19 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
         width: 100% !important;
         margin-top: 8px;
     }
+}
+
+.override-role-item {
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.override-role-item:hover {
+    background: rgba(167, 139, 250, 0.2) !important;
+    color: var(--color-accent) !important;
+}
+#override-role-dropdown::-webkit-scrollbar {
+    width: 5px;
+}
+#override-role-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
 }

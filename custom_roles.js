@@ -6,6 +6,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     initCustomRoleModal();
     renderCustomRolesList();
+    initOverrideRoleSearch();
 });
 
 // --- QUẢN LÝ CUSTOM ROLE FORM ---
@@ -257,14 +258,20 @@ function renderCustomRoleWorkspace(roleKey) {
 
     let targetHtml = '';
     if (cr.canTarget) {
-        const opts = gameState.players.filter(p => p.isAlive).map(p =>
-            `<div class="action-option-item" onclick="selectCustomTarget('${roleKey}','${p.id}',this)">${p.name}</div>`
-        ).join('');
+        const selectedTarget = gameState.nightActions.customTargets ? gameState.nightActions.customTargets[roleKey] : null;
+        const opts = gameState.players.filter(p => p.isAlive).map(p => {
+            const isSelected = p.id === selectedTarget;
+            return `<div class="target-select-card ${isSelected ? 'selected' : ''}" onclick="selectCustomTarget('${roleKey}','${p.id}',this)">
+                <span class="target-name">${p.name}</span>
+            </div>`;
+        }).join('');
+        const selectedPlayer = selectedTarget ? gameState.players.find(p => p.id === selectedTarget) : null;
+        const labelText = selectedPlayer ? ('Đã chọn: ' + selectedPlayer.name) : '';
         targetHtml = `
             <div class="glass-panel-nested p-2 mb-3">
                 <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px;">Chọn mục tiêu:</p>
                 <div class="action-options-grid" id="cr-target-grid-${roleKey}">${opts}</div>
-                <p id="cr-target-label-${roleKey}" style="font-size:0.85rem;color:var(--color-accent);margin-top:8px;min-height:20px;"></p>
+                <p id="cr-target-label-${roleKey}" style="font-size:0.85rem;color:var(--color-accent);margin-top:8px;min-height:20px;">${labelText}</p>
             </div>`;
     }
 
@@ -285,7 +292,7 @@ function renderCustomRoleWorkspace(roleKey) {
 
 window.selectCustomTarget = function(roleKey, playerId, el) {
     const grid = document.getElementById('cr-target-grid-' + roleKey);
-    if (grid) grid.querySelectorAll('.action-option-item').forEach(e => e.classList.remove('selected'));
+    if (grid) grid.querySelectorAll('.target-select-card').forEach(e => e.classList.remove('selected'));
     el.classList.add('selected');
 
     if (!gameState.nightActions.customTargets) gameState.nightActions.customTargets = {};
@@ -416,6 +423,86 @@ function triggerCustomRoleDeathEffects(deadPlayerIds) {
 // MODERATOR OVERRIDE (QUYỀN NĂNG QUẢN TRÒ)
 // ============================================================
 
+function initOverrideRoleSearch() {
+    const searchInput = document.getElementById('override-role-search');
+    const dropdown = document.getElementById('override-role-dropdown');
+    if (!searchInput || !dropdown) return;
+
+    searchInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+        renderOverrideRoleDropdown('');
+        dropdown.style.display = 'block';
+    });
+
+    searchInput.addEventListener('focus', () => {
+        renderOverrideRoleDropdown('');
+        dropdown.style.display = 'block';
+    });
+
+    searchInput.addEventListener('input', (e) => {
+        renderOverrideRoleDropdown(e.target.value);
+        dropdown.style.display = 'block';
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.style.display = 'none';
+        }
+    });
+}
+
+function renderOverrideRoleDropdown(filterText = '') {
+    const dropdown = document.getElementById('override-role-dropdown');
+    if (!dropdown) return;
+
+    const query = filterText.toLowerCase().trim();
+    const currentRoleId = document.getElementById('override-player-role')?.value;
+    let html = '';
+
+    // Core Roles
+    const coreRoles = Object.keys(ROLES_DEFINITION).map(rk => ({
+        id: rk,
+        name: ROLES_DEFINITION[rk].name
+    })).filter(r => !query || r.name.toLowerCase().includes(query));
+
+    if (coreRoles.length > 0) {
+        html += `<div style="padding: 6px 10px; font-size: 0.75rem; font-weight: bold; color: var(--text-muted); background: rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 0.5px;">Chức năng chính</div>`;
+        coreRoles.forEach(r => {
+            const isSel = currentRoleId === r.id;
+            const escapedName = r.name.replace(/'/g, "\\'");
+            html += `<div class="override-role-item ${isSel ? 'selected' : ''}" onclick="selectOverrideRole('${r.id}', '${escapedName}')" style="padding: 8px 12px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: ${isSel ? 'var(--color-accent)' : 'var(--text-primary)'}; background: ${isSel ? 'rgba(167, 139, 250, 0.15)' : 'transparent'};">${r.name}</div>`;
+        });
+    }
+
+    // Custom Roles
+    if (gameState.customRoles && gameState.customRoles.length > 0) {
+        const customRoles = gameState.customRoles.filter(cr => !query || cr.name.toLowerCase().includes(query));
+        if (customRoles.length > 0) {
+            html += `<div style="padding: 6px 10px; font-size: 0.75rem; font-weight: bold; color: var(--text-muted); background: rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 0.5px;">Chức năng tùy chỉnh</div>`;
+            customRoles.forEach(cr => {
+                const isSel = currentRoleId === cr.id;
+                const escapedName = cr.name.replace(/'/g, "\\'");
+                html += `<div class="override-role-item ${isSel ? 'selected' : ''}" onclick="selectOverrideRole('${cr.id}', '${escapedName}')" style="padding: 8px 12px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); color: ${isSel ? 'var(--color-accent)' : 'var(--text-primary)'}; background: ${isSel ? 'rgba(167, 139, 250, 0.15)' : 'transparent'};">✦ ${cr.name}</div>`;
+            });
+        }
+    }
+
+    if (!html) {
+        html = `<div style="padding: 10px; text-align: center; font-size: 0.85rem; color: var(--text-muted);">Không tìm thấy chức năng phù hợp</div>`;
+    }
+
+    dropdown.innerHTML = html;
+}
+
+window.selectOverrideRole = function(roleId, roleName) {
+    const roleInput = document.getElementById('override-player-role');
+    const searchInput = document.getElementById('override-role-search');
+    const dropdown = document.getElementById('override-role-dropdown');
+    if (roleInput) roleInput.value = roleId;
+    if (searchInput) searchInput.value = roleName;
+    if (dropdown) dropdown.style.display = 'none';
+};
+
 window.openOverrideModal = function(playerId) {
     const player = gameState.players.find(p => p.id === playerId);
     if (!player) return;
@@ -427,27 +514,18 @@ window.openOverrideModal = function(playerId) {
     document.getElementById('override-player-name').innerText = player.name;
     document.getElementById('override-player-status').value = player.isAlive ? 'alive' : 'dead';
 
-    // Sinh options cho override-player-role
-    const roleSelect = document.getElementById('override-player-role');
-    let roleOptionsHtml = '';
-    
-    // Core Roles
-    Object.keys(ROLES_DEFINITION).forEach(rk => {
-        const def = ROLES_DEFINITION[rk];
-        roleOptionsHtml += `<option value="${rk}">${def.name}</option>`;
-    });
+    const currentRole = player.role || 'villager';
+    document.getElementById('override-player-role').value = currentRole;
 
-    // Custom Roles
-    if (gameState.customRoles && gameState.customRoles.length > 0) {
-        roleOptionsHtml += `<optgroup label="--- Chức Năng Tùy Chỉnh ---">`;
-        gameState.customRoles.forEach(cr => {
-            roleOptionsHtml += `<option value="${cr.id}">✦ ${cr.name}</option>`;
-        });
-        roleOptionsHtml += `</optgroup>`;
+    let currentRoleName = ROLES_DEFINITION[currentRole]?.name;
+    if (!currentRoleName && gameState.customRoles) {
+        currentRoleName = gameState.customRoles.find(r => r.id === currentRole)?.name;
     }
+    const searchInput = document.getElementById('override-role-search');
+    if (searchInput) searchInput.value = currentRoleName || currentRole;
 
-    roleSelect.innerHTML = roleOptionsHtml;
-    roleSelect.value = player.role || 'villager';
+    const dropdown = document.getElementById('override-role-dropdown');
+    if (dropdown) dropdown.style.display = 'none';
 
     modal.classList.add('active');
 };

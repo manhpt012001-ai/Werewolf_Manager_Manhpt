@@ -1210,30 +1210,45 @@ function renderAssignTable() {
                        class="custom-select-input" 
                        id="input-${player.id}"
                        value="${player.role === 'unassigned' ? '' : roleName}" 
-                       placeholder="-- Chọn chức năng --"
+                       placeholder="-- Chọn hoặc gõ tìm vai trò --"
                        onfocus="window.showRoleDropdown('${player.id}')"
                        oninput="window.filterRoleDropdown('${player.id}', this.value)"
                        autocomplete="off">
                 <i data-lucide="chevron-down" class="custom-select-icon"></i>
                 <div class="custom-select-dropdown" id="dropdown-${player.id}">
-                    <div class="custom-select-item" data-role="unassigned" onclick="window.selectPlayerRole('${player.id}', 'unassigned')">-- Chưa gán --</div>
+                    <div class="custom-select-item ${player.role === 'unassigned' ? 'selected' : ''}" data-role="unassigned" onclick="window.selectPlayerRole('${player.id}', 'unassigned')">-- Chưa gán --</div>
         `;
+
+        let coreItemsHtml = '';
         Object.keys(ROLES_DEFINITION).forEach(roleKey => {
             const role = ROLES_DEFINITION[roleKey];
             const count = gameState.selectedRoles[roleKey] || 0;
             if (count > 0 || roleKey === 'villager') {
-                selectHtml += `<div class="custom-select-item" data-role="${roleKey}" data-name="${role.name.toLowerCase()}" onclick="window.selectPlayerRole('${player.id}', '${roleKey}')">${role.name}</div>`;
+                const isSel = player.role === roleKey;
+                coreItemsHtml += `<div class="custom-select-item ${isSel ? 'selected' : ''}" data-role="${roleKey}" data-name="${role.name.toLowerCase()}" onclick="window.selectPlayerRole('${player.id}', '${roleKey}')">${role.name}</div>`;
             }
         });
-        // Thêm custom roles vào dropdown gán chức năng
+
+        if (coreItemsHtml) {
+            selectHtml += `<div class="custom-select-header" data-group="core" style="padding: 6px 10px; font-size: 0.75rem; font-weight: bold; color: var(--text-muted); background: rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 0.5px;">Chức năng chính</div>` + coreItemsHtml;
+        }
+
+        let customItemsHtml = '';
         if (gameState.customRoles) {
             gameState.customRoles.forEach(cr => {
                 const crCount = gameState.selectedCustomRoles[cr.id] || cr.count || 0;
                 if (crCount > 0) {
-                    selectHtml += `<div class="custom-select-item" data-role="${cr.id}" data-name="${cr.name.toLowerCase()}" onclick="window.selectPlayerRole('${player.id}', '${cr.id}')" style="border-left:2px solid ${cr.color};padding-left:8px;">✦ ${cr.name}</div>`;
+                    const isSel = player.role === cr.id;
+                    customItemsHtml += `<div class="custom-select-item ${isSel ? 'selected' : ''}" data-role="${cr.id}" data-name="${cr.name.toLowerCase()}" onclick="window.selectPlayerRole('${player.id}', '${cr.id}')" style="border-left:2px solid ${cr.color};padding-left:8px;">✦ ${cr.name}</div>`;
                 }
             });
         }
+
+        if (customItemsHtml) {
+            selectHtml += `<div class="custom-select-header" data-group="custom" style="padding: 6px 10px; font-size: 0.75rem; font-weight: bold; color: var(--text-muted); background: rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 0.5px;">Chức năng tùy chỉnh</div>` + customItemsHtml;
+        }
+
+        selectHtml += `<div class="custom-select-empty-msg" style="display:none; padding: 10px; text-align: center; font-size: 0.85rem; color: var(--text-muted);">Không tìm thấy chức năng phù hợp</div>`;
         selectHtml += `</div></div>`;
 
 
@@ -1265,19 +1280,42 @@ window.showRoleDropdown = function (playerId) {
 window.filterRoleDropdown = function (playerId, query) {
     const q = query.toLowerCase().trim();
     const dropdown = document.getElementById(`dropdown-${playerId}`);
+    if (!dropdown) return;
+
     const items = dropdown.querySelectorAll('.custom-select-item');
+    let visibleCount = 0;
+    let coreVisible = 0;
+    let customVisible = 0;
+
     items.forEach(item => {
         const name = item.getAttribute('data-name');
-        if (item.getAttribute('data-role') === 'unassigned') {
-            item.style.display = q === '' ? 'block' : 'none';
+        const role = item.getAttribute('data-role');
+
+        if (role === 'unassigned') {
+            const show = q === '';
+            item.style.display = show ? 'block' : 'none';
+            if (show) visibleCount++;
         } else {
-            if (name && name.includes(q)) {
-                item.style.display = 'block';
-            } else {
-                item.style.display = 'none';
+            const match = !q || (name && name.includes(q));
+            item.style.display = match ? 'block' : 'none';
+            if (match) {
+                visibleCount++;
+                if (item.innerText.includes('✦') || (gameState.customRoles && gameState.customRoles.some(cr => cr.id === role))) {
+                    customVisible++;
+                } else {
+                    coreVisible++;
+                }
             }
         }
     });
+
+    const coreHeader = dropdown.querySelector('.custom-select-header[data-group="core"]');
+    const customHeader = dropdown.querySelector('.custom-select-header[data-group="custom"]');
+    const emptyMsg = dropdown.querySelector('.custom-select-empty-msg');
+
+    if (coreHeader) coreHeader.style.display = coreVisible > 0 ? 'block' : 'none';
+    if (customHeader) customHeader.style.display = customVisible > 0 ? 'block' : 'none';
+    if (emptyMsg) emptyMsg.style.display = visibleCount === 0 ? 'block' : 'none';
 }
 
 window.selectPlayerRole = function (playerId, roleKey) {
