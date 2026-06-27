@@ -1,6 +1,22 @@
 // --- Cấu hình các Chức năng (Roles) ---
 const ROLES_DEFINITION = {
     // Phe cơ bản (isBasic: true)
+    thief: {
+        id: 'thief',
+        name: 'Ăn Trộm',
+        team: 'ambiguous',
+        icon: 'scissors',
+        color: '#a16207',
+        desc: 'Đêm đầu xem 2 lá dư, có thể đổi lấy 1 trong 2.',
+        max: 1,
+        isBasic: true,
+        gameplayDetail: `Nhiệm vụ: Đêm đầu tiên xem 2 lá bài dư và quyết định có đổi không.
+Cách chơi của Quản trò:
+- Đêm 1: Chuẩn bị 2 lá dư (thường là 2 Dân Làng).
+- Gọi Ăn Trộm dậy, cho xem 2 lá, hỏi có muốn đổi không.
+- Nếu cả 2 lá đều là Sói, BUỘC phải đổi thành Sói.
+- Ăn Trộm sẽ nhận vai mới và chơi với vai đó đến cuối game.`
+    },
     cupid: {
         id: 'cupid',
         name: 'Cupid (Thần Tình Yêu)',
@@ -168,7 +184,7 @@ Cách chơi của Quản trò:
     },
     big_bad_wolf: {
         id: 'big_bad_wolf',
-        name: 'Sói Điên',
+        name: 'Sói Đầu Đàn',
         team: 'wolf',
         icon: 'activity',
         color: '#b91c1c',
@@ -177,8 +193,8 @@ Cách chơi của Quản trò:
         isBasic: false,
         gameplayDetail: `Nhiệm vụ: Phe Ma Sói.
 Cách chơi của Quản trò:
-- Đêm: Sói Điên thức dậy cùng đàn sói cắn người như thường lệ. Sau đó, gọi riêng Sói Điên dậy cắn thêm một nạn nhân thứ 2.
-- Điều kiện đặc biệt: Sói Điên chỉ được cắn riêng khi chưa có bất kỳ thành viên nào thuộc phe Ma Sói bị tiêu diệt.`
+- Đêm: Sói Đầu Đàn thức dậy cùng đàn sói cắn người như thường lệ. Sau đó, gọi riêng Sói Đầu Đàn dậy cắn thêm một nạn nhân thứ 2.
+- Điều kiện đặc biệt: Sói Đầu Đàn chỉ được cắn riêng khi chưa có bất kỳ thành viên nào thuộc phe Ma Sói bị tiêu diệt.`
     },
     white_wolf: {
         id: 'white_wolf',
@@ -301,15 +317,147 @@ Cách chơi của Quản trò:
     }
 };
 
-// Trình tự thức dậy ban đêm chuẩn mở rộng
-const NIGHT_ORDER = [
-    'cupid', 'wild_child', 'guard', 'wolf', 'big_bad_wolf', 'white_wolf', 'witch', 'seer', 'apprentice_seer', 'fox', 'piper',
-    'hunter', 'idiot', 'elder', 'lycan', 'bear_tamer', 'cursed', 'jester', 'wolf_cub', 'rusty_knight', 'angel'
+// Trình tự thức dậy ban đêm chuẩn
+const NIGHT_ORDER_INTERNATIONAL = [
+    'thief', 'cupid', 'wild_child', 'guard', 'seer', 'wolf', 'big_bad_wolf', 'white_wolf', 'witch', 'fox', 'piper',
+    'hunter', 'lycan', 'bear_tamer', 'cursed', 'jester', 'wolf_cub', 'rusty_knight', 'angel'
 ];
+
+const NIGHT_ORDER_VIETNAM = [
+    'thief', 'cupid', 'wild_child', 'guard', 'wolf', 'big_bad_wolf', 'white_wolf', 'seer', 'apprentice_seer', 'witch', 'fox', 'piper', 'elder_confirm',
+    'hunter', 'lycan', 'bear_tamer', 'cursed', 'jester', 'wolf_cub', 'rusty_knight', 'angel'
+];
+
+function getNightOrder() {
+    return gameState.ruleMode === 'international' ? NIGHT_ORDER_INTERNATIONAL : NIGHT_ORDER_VIETNAM;
+}
+
+const MODERATOR_SCRIPTS = {
+    international: {
+        thief: {
+            night: `"Ăn Trộm dậy. Đây là 2 lá còn dư — bạn có muốn đổi lá của mình lấy 1 trong 2 lá này không? Đi ngủ lại."`,
+            note: `Chỉ gọi đêm đầu tiên. Nếu 2 lá dư đều là Sói, Ăn Trộm BẮT BUỘC phải đổi lấy Sói.`
+        },
+        cupid: {
+            night: `"Cupid dậy. Hãy chỉ ra 2 người bạn muốn ghép thành cặp đôi yêu nhau. Cupid đi ngủ lại. Hai người được Cupid chọn, hãy mở mắt và nhận mặt nhau. Cặp đôi đi ngủ lại."`,
+            note: `Chỉ gọi đêm đầu tiên.`
+        },
+        wild_child: {
+            night: `"Đứa trẻ hoang dã dậy. Hãy chọn 1 người làm thần tượng. Đứa trẻ hoang dã đi ngủ lại."`,
+            note: `Chỉ gọi đêm đầu tiên.`
+        },
+        guard: {
+            night: `"Bảo Vệ dậy. Đêm nay bạn muốn bảo vệ ai? Bảo Vệ đi ngủ lại."`,
+            note: `Không được bảo vệ cùng 1 mục tiêu ở 2 đêm liên tiếp.`
+        },
+        seer: {
+            night: `"Tiên Tri dậy. Bạn muốn soi ai đêm nay? (Quản trò ra dấu). Tiên Tri đi ngủ lại."`,
+            note: `Ngón cái lên = Dân, ngón cái xuống = Sói.`
+        },
+        apprentice_seer: {
+            night: `"Tiên Tri Tập Sự dậy. Bạn muốn soi ai đêm nay? (Quản trò ra dấu). Tiên Tri Tập Sự đi ngủ lại."`,
+            note: `Chỉ gọi khi Tiên Tri đã chết.`
+        },
+        wolf: {
+            night: `"Ma Sói dậy. Đêm nay bầy sói thống nhất cắn ai? Ma Sói đi ngủ lại."`,
+            note: `Cô Bé (nếu có) có thể hé mắt.`
+        },
+        big_bad_wolf: {
+            night: `"Sói Đầu Đàn dậy. Bạn muốn cắn thêm ai? Sói Đầu Đàn đi ngủ lại."`,
+            note: `Chỉ được cắn khi chưa có con Sói nào bị loại.`
+        },
+        white_wolf: {
+            night: `"Sói Trắng dậy. Bạn có muốn cắn con Sói nào không? Sói Trắng đi ngủ lại."`,
+            note: `Chỉ gọi vào đêm chẵn (2, 4, 6...). Cắn 1 Sói khác.`
+        },
+        witch: {
+            night: `"Phù Thủy dậy. Nạn nhân đêm nay là [x]. Bạn có muốn dùng bình cứu không? Bạn có muốn dùng bình độc không? Phù Thủy đi ngủ lại."`,
+            note: `Mỗi bình chỉ dùng 1 lần trong cả ván.`
+        },
+        fox: {
+            night: `"Hồ Ly dậy. Chọn 3 người ngồi cạnh nhau. (Quản trò gật/lắc). Hồ Ly đi ngủ lại."`,
+            note: `Gật = Có sói, Lắc = Không có sói và Hồ Ly mất năng lực.`
+        },
+        piper: {
+            night: `"Người Thổi Sáo dậy. Chọn 2 người để thôi miên. Người Thổi Sáo đi ngủ. Những người bị thôi miên mở mắt nhận diện nhau. Đi ngủ lại."`,
+            note: `Thắng khi tất cả người còn sống đều bị thôi miên.`
+        },
+        elder_confirm: {
+            night: `"Già Làng mở mắt để Quản trò xác nhận. Già Làng đi ngủ lại."`,
+            note: `Chỉ gọi đêm đầu tiên.`
+        }
+    },
+    vietnam: {
+        thief: {
+            night: `"Ăn Trộm dậy. Đây là 2 lá còn dư — bạn có muốn đổi lá của mình lấy 1 trong 2 lá này không? Đi ngủ lại."`,
+            note: `Chỉ gọi đêm đầu tiên. Nếu 2 lá dư đều là Sói, Ăn Trộm BẮT BUỘC phải đổi lấy Sói.`
+        },
+        cupid: {
+            night: `"Cupid dậy. Hãy chỉ ra 2 người bạn muốn ghép thành cặp đôi yêu nhau. Cupid đi ngủ lại. Hai người được Cupid chọn, hãy mở mắt và nhận mặt nhau. Cặp đôi đi ngủ lại."`,
+            note: `Chỉ gọi đêm đầu tiên.`
+        },
+        wild_child: {
+            night: `"Đứa trẻ hoang dã dậy. Hãy chọn 1 người làm thần tượng. Đứa trẻ hoang dã đi ngủ lại."`,
+            note: `Chỉ gọi đêm đầu tiên.`
+        },
+        guard: {
+            night: `"Bảo Vệ dậy. Đêm nay bạn muốn bảo vệ ai? Bảo Vệ đi ngủ lại."`,
+            note: `Không được bảo vệ cùng 1 mục tiêu ở 2 đêm liên tiếp.`
+        },
+        wolf: {
+            night: `"Ma Sói dậy. Đêm nay bầy sói thống nhất cắn ai? Ma Sói đi ngủ lại."`,
+            note: `Cô Bé (nếu có) có thể hé mắt.`
+        },
+        big_bad_wolf: {
+            night: `"Sói Đầu Đàn dậy. Bạn muốn cắn thêm ai? Sói Đầu Đàn đi ngủ lại."`,
+            note: `Chỉ được cắn khi chưa có con Sói nào bị loại.`
+        },
+        white_wolf: {
+            night: `"Sói Trắng dậy. Bạn có muốn cắn con Sói nào không? Sói Trắng đi ngủ lại."`,
+            note: `Chỉ gọi vào đêm chẵn (2, 4, 6...). Cắn 1 Sói khác.`
+        },
+        seer: {
+            night: `"Tiên Tri dậy. Bạn muốn soi ai đêm nay? (Quản trò ra dấu). Tiên Tri đi ngủ lại."`,
+            note: `Ngón cái lên = Dân, ngón cái xuống = Sói.`
+        },
+        apprentice_seer: {
+            night: `"Tiên Tri Tập Sự dậy. Bạn muốn soi ai đêm nay? (Quản trò ra dấu). Tiên Tri Tập Sự đi ngủ lại."`,
+            note: `Chỉ gọi khi Tiên Tri đã chết.`
+        },
+        witch: {
+            night: `"Phù Thủy dậy. Nạn nhân đêm nay là [x]. Bạn có muốn dùng bình cứu không? Bạn có muốn dùng bình độc không? Phù Thủy đi ngủ lại."`,
+            note: `Mỗi bình chỉ dùng 1 lần trong cả ván.`
+        },
+        fox: {
+            night: `"Hồ Ly dậy. Chọn 3 người ngồi cạnh nhau. (Quản trò gật/lắc). Hồ Ly đi ngủ lại."`,
+            note: `Gật = Có sói, Lắc = Không có sói và Hồ Ly mất năng lực.`
+        },
+        piper: {
+            night: `"Người Thổi Sáo dậy. Chọn 2 người để thôi miên. Người Thổi Sáo đi ngủ. Những người bị thôi miên mở mắt nhận diện nhau. Đi ngủ lại."`,
+            note: `Thắng khi tất cả người còn sống đều bị thôi miên.`
+        },
+        elder_confirm: {
+            night: `"Già Làng mở mắt để Quản trò xác nhận. Già Làng đi ngủ lại."`,
+            note: `Chỉ gọi đêm đầu tiên.`
+        }
+    }
+};
+
+const ROLE_SUGGESTIONS = {
+    8:  { wolf: 2, seer: 1, guard: 1 },
+    9:  { wolf: 2, seer: 1, guard: 1 },
+    10: { wolf: 3, seer: 1, guard: 1, hunter: 1 },
+    11: { wolf: 3, seer: 1, guard: 1, hunter: 1 },
+    12: { wolf: 3, seer: 1, guard: 1, hunter: 1, cupid: 1 },
+    13: { wolf: 3, seer: 1, guard: 1, hunter: 1, cupid: 1 },
+    14: { wolf: 3, seer: 1, guard: 1, hunter: 1, cupid: 1, witch: 1 },
+    15: { wolf: 4, seer: 1, guard: 1, hunter: 1, cupid: 1, witch: 1 },
+};
 
 // --- Trạng thái Game (Game State) ---
 let gameStateHistory = [];
 let gameState = {
+    ruleMode: null, // 'international' | 'vietnam'
     players: [],
     currentPhase: 'setup',
     nightNumber: 0,
@@ -336,6 +484,7 @@ let gameState = {
     logs: [],
 
     selectedRoles: {
+        thief: 0,
         cupid: 0,
         guard: 1,
         wolf: 2,
@@ -437,6 +586,7 @@ function softResetGame() {
     gameState.witchHasSave = true;
     gameState.witchHasPoison = true;
     gameState.cupidActionDone = false;
+    gameState.elderKilledByVillagers = false;
 
     gameState.players.forEach(p => {
         p.isAlive = true;
@@ -449,11 +599,30 @@ function softResetGame() {
 
     addLog("Đã khởi động lại ván chơi với người chơi hiện tại.", "info");
 
+    gameState.ruleMode = null;
+    showPhase('phase-mode-select'); // Bắt đầu ở màn hình chọn luật
+}
+
+window.selectRuleMode = function(mode) {
+    gameState.ruleMode = mode;
+    
+    // Cập nhật giao diện để ẩn phase 0 và hiện phase 1
     showPhase('phase-setup');
+    
+    const badge = document.getElementById('current-mode-badge');
+    if (badge) {
+        badge.style.display = 'block';
+        badge.innerText = 'Mode: ' + (mode === 'international' ? 'Quốc Tế' : 'Việt Nam');
+        badge.style.color = mode === 'international' ? 'var(--color-accent)' : 'var(--color-danger)';
+        badge.style.borderColor = badge.style.color;
+    }
+    
+    addLog(`Đã chọn bộ luật: ${mode === 'international' ? 'Quốc Tế' : 'Việt Nam'}`, 'info');
+    
     renderSetupRoles();
     renderSetupPlayers();
     renderPlayerSidebarList();
-}
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
@@ -500,6 +669,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showRulesBtn = document.getElementById('btn-show-rules');
     if (showRulesBtn) {
         showRulesBtn.addEventListener('click', () => {
+            renderRulesModal();
             document.getElementById('rules-modal').classList.add('active');
         });
     }
@@ -511,6 +681,44 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('rules-modal').classList.remove('active');
         });
     }
+
+function renderRulesModal() {
+    const list = document.getElementById('rules-order-list');
+    const title = document.getElementById('rules-order-title');
+    if (!list || !title) return;
+
+    if (gameState.ruleMode === 'vietnam') {
+        title.innerText = 'Trình tự gọi đêm (Luật Việt Nam Mở rộng):';
+        list.innerHTML = `
+            <li><strong>Ăn Trộm:</strong> Đổi bài dư (Chỉ đêm 1).</li>
+            <li><strong>Cupid (Thần tình yêu):</strong> Ghép đôi 2 người (Chỉ đêm 1).</li>
+            <li><strong>Đứa trẻ hoang dã:</strong> Chọn thần tượng (Chỉ đêm 1).</li>
+            <li><strong>Bảo vệ:</strong> Chọn 1 người để bảo vệ. Không bảo vệ trùng 2 đêm liên tiếp.</li>
+            <li><strong>Ma Sói & Sói Đầu Đàn:</strong> Cắn người. Sói Đầu Đàn cắn thêm nếu chưa có sói chết.</li>
+            <li><strong>Sói Trắng:</strong> Cắn 1 con sói khác (Chỉ thức đêm chẵn).</li>
+            <li><strong>Tiên Tri:</strong> Soi 1 người.</li>
+            <li><strong>Tiên Tri Tập Sự:</strong> Soi 1 người (Chỉ thức khi Tiên Tri thật đã chết).</li>
+            <li><strong>Phù Thủy:</strong> Dùng bình cứu / độc.</li>
+            <li><strong>Hồ Ly:</strong> Soi 3 người ngồi cạnh nhau.</li>
+            <li><strong>Người Thổi Sáo:</strong> Thôi miên 2 người.</li>
+            <li><strong>Già Làng:</strong> Xác nhận thân phận (Chỉ đêm 1).</li>
+        `;
+    } else {
+        title.innerText = 'Trình tự gọi đêm (Luật Quốc Tế Chuẩn gốc):';
+        list.innerHTML = `
+            <li><strong>Ăn Trộm:</strong> Đổi bài dư (Chỉ đêm 1).</li>
+            <li><strong>Cupid (Thần tình yêu):</strong> Ghép đôi 2 người (Chỉ đêm 1).</li>
+            <li><strong>Đứa trẻ hoang dã:</strong> Chọn thần tượng (Chỉ đêm 1).</li>
+            <li><strong>Bảo vệ:</strong> Chọn 1 người để bảo vệ. Không bảo vệ trùng 2 đêm liên tiếp.</li>
+            <li><strong>Tiên Tri:</strong> Soi 1 người.</li>
+            <li><strong>Ma Sói & Sói Đầu Đàn:</strong> Cắn người. Sói Đầu Đàn cắn thêm nếu chưa có sói chết.</li>
+            <li><strong>Sói Trắng:</strong> Cắn 1 con sói khác (Chỉ thức đêm chẵn).</li>
+            <li><strong>Phù Thủy:</strong> Dùng bình cứu / độc.</li>
+            <li><strong>Hồ Ly:</strong> Soi 3 người ngồi cạnh nhau.</li>
+            <li><strong>Người Thổi Sáo:</strong> Thôi miên 2 người.</li>
+        `;
+    }
+}
 
     const btnAddPlayer = document.getElementById('btn-add-player');
     if (btnAddPlayer) btnAddPlayer.addEventListener('click', handleAddPlayer);
@@ -780,8 +988,27 @@ window.quickAddPlayers = function (count) {
     }
 
     addLog(`Đã thêm nhanh ${numToAdd} người chơi mẫu`);
+    
+    // Auto fill suggest roles based on total players
+    if (ROLE_SUGGESTIONS[gameState.players.length]) {
+        const suggestion = ROLE_SUGGESTIONS[gameState.players.length];
+        // Reset old special roles
+        Object.keys(gameState.selectedRoles).forEach(k => {
+            if (k !== 'villager') gameState.selectedRoles[k] = 0;
+        });
+        
+        // Apply suggestion
+        Object.keys(suggestion).forEach(role => {
+            if (gameState.selectedRoles[role] !== undefined) {
+                gameState.selectedRoles[role] = suggestion[role];
+            }
+        });
+        addLog(`Đã tự động áp dụng cấu hình chức năng gợi ý cho ${gameState.players.length} người.`, 'info');
+    }
+    
     renderSetupPlayers();
     updateRoleCountsAndSummary();
+    renderSetupRoles();
     renderPlayerSidebarList();
 };
 
@@ -1074,6 +1301,7 @@ function startGame() {
     gameState.witchHasSave = true;
     gameState.witchHasPoison = true;
     gameState.cupidActionDone = false;
+    gameState.elderKilledByVillagers = false;
 
     gameState.players.forEach(p => {
         p.isAlive = true;
@@ -1127,10 +1355,13 @@ function buildNightChecklist() {
     let isFirstStep = true;
     activeNightStepRole = null;
 
-    NIGHT_ORDER.forEach(roleKey => {
+    const currentOrder = getNightOrder();
+
+    currentOrder.forEach(roleKey => {
         if (roleKey === 'cupid' && gameState.nightNumber > 1) return;
         if (roleKey === 'wild_child' && gameState.nightNumber > 1) return;
-        if (roleKey === 'white_wolf' && gameState.nightNumber % 2 !== 1) return;
+        if (roleKey === 'white_wolf' && gameState.nightNumber % 2 !== 0) return;
+        if (roleKey === 'elder_confirm' && gameState.nightNumber > 1) return;
 
         if (roleKey === 'apprentice_seer') {
             const seerDead = !gameState.players.some(p => p.role === 'seer' && p.isAlive);
@@ -1144,6 +1375,9 @@ function buildNightChecklist() {
             const wolfRoles = ['wolf', 'wolf_cub', 'big_bad_wolf', 'white_wolf'];
             isRoleInGame = gameState.players.some(p => wolfRoles.includes(p.role));
             isRoleAlive = gameState.players.some(p => wolfRoles.includes(p.role) && p.isAlive);
+        } else if (roleKey === 'elder_confirm') {
+            isRoleInGame = gameState.players.some(p => p.role === 'elder');
+            isRoleAlive = gameState.players.some(p => p.role === 'elder' && p.isAlive);
         } else {
             isRoleInGame = gameState.players.some(p => p.role === roleKey);
             isRoleAlive = gameState.players.some(p => p.role === roleKey && p.isAlive);
@@ -1155,12 +1389,14 @@ function buildNightChecklist() {
         stepBtn.className = 'night-step-btn';
         stepBtn.id = `step-btn-${roleKey}`;
 
-        const roleDef = ROLES_DEFINITION[roleKey];
+        let roleDef = ROLES_DEFINITION[roleKey];
+        if (roleKey === 'elder_confirm') {
+            roleDef = ROLES_DEFINITION['elder'];
+        }
 
         let statusIcon = '<i data-lucide="circle" class="text-muted"></i>';
         if (!isRoleAlive) {
             statusIcon = '<i data-lucide="skull" class="text-danger"></i> (Đã chết)';
-            stepBtn.disabled = true;
         }
 
         stepBtn.innerHTML = `
@@ -1171,12 +1407,10 @@ function buildNightChecklist() {
             <div class="step-status">${statusIcon}</div>
         `;
 
-        if (isRoleAlive) {
-            stepBtn.addEventListener('click', () => selectNightStep(roleKey));
-            if (isFirstStep) {
-                isFirstStep = false;
-                setTimeout(() => selectNightStep(roleKey), 50);
-            }
+        stepBtn.addEventListener('click', () => selectNightStep(roleKey));
+        if (isFirstStep) {
+            isFirstStep = false;
+            setTimeout(() => selectNightStep(roleKey), 50);
         }
 
         listContainer.appendChild(stepBtn);
@@ -1203,7 +1437,80 @@ function selectNightStep(roleKey) {
     if (activeBtn) activeBtn.classList.add('active');
 
     const workspace = document.getElementById('night-action-workspace');
-    const roleDef = ROLES_DEFINITION[roleKey];
+    
+    let roleDef = ROLES_DEFINITION[roleKey];
+    if (roleKey === 'elder_confirm') {
+        roleDef = ROLES_DEFINITION['elder'];
+    }
+
+    // Hiển thị script (ngay cả khi chức năng đã chết)
+    const scriptQuote = document.getElementById('script-main-quote');
+    const scriptNote = document.getElementById('script-note');
+    if (scriptQuote && MODERATOR_SCRIPTS[gameState.ruleMode]) {
+        const scripts = MODERATOR_SCRIPTS[gameState.ruleMode][roleKey];
+        if (scripts) {
+            scriptQuote.innerText = scripts.night;
+            scriptNote.innerHTML = scripts.note ? `<i data-lucide="info" style="width:14px; height:14px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> ${scripts.note}` : '';
+        } else {
+            scriptQuote.innerText = `Lượt của ${roleDef.name}`;
+            scriptNote.innerHTML = '';
+        }
+        lucide.createIcons();
+    }
+
+    let isRoleAlive = false;
+    if (roleKey === 'wolf') {
+        const wolfRoles = ['wolf', 'wolf_cub', 'big_bad_wolf', 'white_wolf'];
+        isRoleAlive = gameState.players.some(p => wolfRoles.includes(p.role) && p.isAlive);
+    } else if (roleKey === 'elder_confirm') {
+        isRoleAlive = gameState.players.some(p => p.role === 'elder' && p.isAlive);
+    } else {
+        isRoleAlive = gameState.players.some(p => p.role === roleKey && p.isAlive);
+    }
+
+    if (!isRoleAlive) {
+        workspace.innerHTML = `
+            <div class="action-form-title">
+                <i data-lucide="${roleDef.icon}" style="color: ${roleDef.color}"></i>
+                <span>Lượt của ${roleDef.name}</span>
+            </div>
+            <p class="action-description">${roleDef.desc}</p>
+            <div class="glass-panel-nested p-3 mt-3 text-center border-warning">
+                <i data-lucide="ghost" class="text-warning mb-2" style="width:32px; height:32px;"></i>
+                <p class="text-warning font-weight-bold">Chức năng này đã chết!</p>
+                <p class="text-muted" style="font-size: 0.9rem;">(Hãy đọc lời Quản trò giả vờ thao tác vài giây để người chơi khác không nghi ngờ, sau đó bấm Bỏ qua)</p>
+            </div>
+            <div class="mt-4">
+                <button class="btn btn-secondary w-100" onclick="confirmGenericAction('${roleKey}')">Tiếp tục (Bỏ qua)</button>
+            </div>
+        `;
+        lucide.createIcons();
+        return;
+    }
+
+    const disabledByElder = gameState.elderKilledByVillagers && ['guard', 'seer', 'witch', 'apprentice_seer', 'fox'].includes(roleKey);
+    const anyWolfDied = gameState.players.some(p => ['wolf', 'wolf_cub', 'big_bad_wolf', 'white_wolf'].includes(p.role) && !p.isAlive);
+    const bigBadWolfDisabled = roleKey === 'big_bad_wolf' && anyWolfDied;
+
+    if (disabledByElder || bigBadWolfDisabled) {
+        let msg = disabledByElder ? 'Chức năng đã bị vô hiệu hóa do Già Làng bị giết bởi dân làng!' : 'Sói Đầu Đàn không được cắn thêm vì đã có Sói chết.';
+        workspace.innerHTML = `
+            <div class="action-form-title">
+                <i data-lucide="${roleDef.icon}" style="color: ${roleDef.color}"></i>
+                <span>Lượt của ${roleDef.name}</span>
+            </div>
+            <p class="action-description">${roleDef.desc}</p>
+            <div class="glass-panel-nested p-3 mt-3 text-center border-danger">
+                <i data-lucide="alert-triangle" class="text-danger mb-2" style="width:32px; height:32px;"></i>
+                <p class="text-danger font-weight-bold">${msg}</p>
+            </div>
+            <div class="mt-4">
+                <button class="btn btn-secondary w-100" onclick="confirmGenericAction('${roleKey}')">Tiếp tục (Bỏ qua)</button>
+            </div>
+        `;
+        lucide.createIcons();
+        return;
+    }
 
     workspace.innerHTML = `
         <div class="action-form-title">
@@ -1211,13 +1518,13 @@ function selectNightStep(roleKey) {
             <span>Lượt của ${roleDef.name}</span>
         </div>
         <p class="action-description">${roleDef.desc}</p>
-        
-        <div id="night-action-inputs">
+        <div id="night-action-inputs" class="mt-3">
             <!-- Nội dung nhập liệu chi tiết sẽ do từng hàm quyết định -->
         </div>
     `;
 
-    if (roleKey === 'cupid') renderCupidWorkspace();
+    if (roleKey === 'thief') renderThiefWorkspace();
+    else if (roleKey === 'cupid') renderCupidWorkspace();
     else if (roleKey === 'guard') renderGuardWorkspace();
     else if (roleKey === 'wolf') renderWolfWorkspace();
     else if (roleKey === 'big_bad_wolf') renderBigBadWolfWorkspace();
@@ -1244,6 +1551,29 @@ function markStepCompleted(roleKey) {
         }
     }
 }
+
+// 0. Ăn Trộm Workspace
+function renderThiefWorkspace() {
+    const container = document.getElementById('night-action-inputs');
+    container.innerHTML = `
+        <p class="subtitle mb-2">Đêm đầu tiên: Ăn Trộm thức dậy và quyết định đổi thẻ bài (nếu có 2 lá dư).</p>
+        <div class="glass-panel-nested p-3 mb-3 text-center">
+            <i data-lucide="eye" class="text-warning mb-2" style="width:32px; height:32px;"></i>
+            <p>Quản trò: <strong>"Bạn có muốn đổi lấy 1 trong 2 lá dư không?"</strong><br>
+            Nếu có 2 lá Ma Sói, Ăn Trộm BẮT BUỘC phải đổi.</p>
+        </div>
+        <button class="btn btn-success w-100 mt-2" onclick="confirmThiefAction()">
+            <i data-lucide="check"></i> Đã nhận diện / Đổi xong
+        </button>
+    `;
+    lucide.createIcons();
+}
+
+window.confirmThiefAction = function() {
+    addLog(`Ăn Trộm đã hoàn tất lượt đêm đầu tiên.`, 'success');
+    markStepCompleted('thief');
+    goToNextActiveStep('thief');
+};
 
 // 1. Cupid Workspace
 function renderCupidWorkspace() {
@@ -1812,10 +2142,22 @@ window.confirmPiperAction = function () {
 };
 
 function goToNextActiveStep(currentRole) {
-    const currentIndex = NIGHT_ORDER.indexOf(currentRole);
-    for (let i = currentIndex + 1; i < NIGHT_ORDER.length; i++) {
-        const nextRole = NIGHT_ORDER[i];
-        if (gameState.players.some(p => p.role === nextRole && p.isAlive)) {
+    const currentOrder = getNightOrder();
+    const currentIndex = currentOrder.indexOf(currentRole);
+    for (let i = currentIndex + 1; i < currentOrder.length; i++) {
+        const nextRole = currentOrder[i];
+        
+        let isRoleInGame = false;
+        if (nextRole === 'wolf') {
+            const wolfRoles = ['wolf', 'wolf_cub', 'big_bad_wolf', 'white_wolf'];
+            isRoleInGame = gameState.players.some(p => wolfRoles.includes(p.role));
+        } else if (nextRole === 'elder_confirm') {
+            isRoleInGame = gameState.players.some(p => p.role === 'elder');
+        } else {
+            isRoleInGame = gameState.players.some(p => p.role === nextRole);
+        }
+
+        if (isRoleInGame) {
             setTimeout(() => selectNightStep(nextRole), 300);
             return;
         }
@@ -1957,6 +2299,7 @@ function startDayPhase(deathsTonight) {
         }
     }
 
+    const dayScriptQuote = document.getElementById('day-script-quote');
     const announcementContainer = document.getElementById('night-results-announcement');
     announcementContainer.innerHTML = '';
 
@@ -1966,7 +2309,19 @@ function startDayPhase(deathsTonight) {
                 <strong>Đêm qua bình yên vô sự!</strong> Không ai bị chết đêm qua.
             </div>
         `;
+        if (dayScriptQuote) {
+            dayScriptQuote.innerText = `"Chào buổi sáng cả làng! Đêm qua là một đêm bình yên vô sự, không có ai chết cả. Mọi người hãy bắt đầu thảo luận!"`;
+        }
     } else {
+        const deadNames = deathsTonight.map(id => {
+            const p = gameState.players.find(x => x.id === id);
+            return p ? p.name : '';
+        }).join(', ');
+
+        if (dayScriptQuote) {
+            dayScriptQuote.innerText = `"Chào buổi sáng! Rất tiếc, đêm qua ${deadNames} đã bị giết. Mời những người đã chết để lại di ngôn, sau đó cả làng bắt đầu thảo luận!"`;
+        }
+
         deathsTonight.forEach(id => {
             const player = gameState.players.find(p => p.id === id);
             if (player) {
@@ -1988,7 +2343,14 @@ function startDayPhase(deathsTonight) {
     renderHangedSelector();
     pauseTimer();
     updateTimerDisplay();
-    checkWinConditions();
+    
+    // Check nếu có thợ săn chết đêm qua
+    const deadHunter = deathsTonight.map(id => gameState.players.find(p => p.id === id)).find(p => p && p.role === 'hunter');
+    if (deadHunter) {
+        triggerHunterShoot(deadHunter);
+    } else {
+        checkWinConditions();
+    }
 }
 
 function renderHangedSelector() {
@@ -2064,8 +2426,99 @@ function handleHangPlayer() {
 
         renderPlayerSidebarList();
         renderHangedSelector();
-        checkWinConditions();
+        
+        if (target.role === 'hunter') {
+            triggerHunterShoot(target);
+        } else {
+            checkWinConditions();
+        }
     }
+}
+
+// --- SCRIPT PANEL TOGGLE ---
+window.toggleScriptPanel = function(phase) {
+    const body = document.getElementById(`script-panel-body-${phase}`);
+    const chevron = document.getElementById(`script-panel-chevron-${phase}`);
+    if (body) {
+        body.classList.toggle('open');
+        if (chevron) {
+            chevron.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+    }
+};
+
+// --- THỢ SĂN TRẢ THÙ ---
+let currentHunterId = null;
+
+function triggerHunterShoot(hunterPlayer) {
+    currentHunterId = hunterPlayer.id;
+    const modal = document.getElementById('hunter-modal');
+    const select = document.getElementById('select-hunter-target');
+    
+    select.innerHTML = '<option value="">-- Chọn người bị bắn --</option>';
+    gameState.players.forEach(p => {
+        if (p.isAlive && p.id !== hunterPlayer.id) {
+            const option = document.createElement('option');
+            option.value = p.id;
+            option.innerText = p.name;
+            select.appendChild(option);
+        }
+    });
+    
+    modal.classList.add('active');
+}
+
+window.confirmHunterShoot = function() {
+    const select = document.getElementById('select-hunter-target');
+    const targetId = select.value;
+    
+    if (!targetId) {
+        alert('Vui lòng chọn người bị bắn hoặc nhấn Bỏ qua!');
+        return;
+    }
+    
+    const target = gameState.players.find(p => p.id === targetId);
+    if (target) {
+        target.isAlive = false;
+        addLog(`Thợ Săn đã bắn chết [${target.name}] trước khi gục ngã!`, 'kill');
+        
+        // Nếu người bị bắn là Già Làng
+        if (target.role === 'elder') {
+            gameState.elderKilledByVillagers = true;
+            addLog(`CẢNH BÁO: Thợ Săn đã bắn chết Trưởng Lão, toàn bộ chức năng phe dân bị vô hiệu hóa!`, 'warning');
+        }
+        
+        // Couple suicide
+        const couplePlayers = gameState.players.filter(p => p.isCouple);
+        if (couplePlayers.length === 2) {
+            const p1 = couplePlayers[0];
+            const p2 = couplePlayers[1];
+
+            if (p1.id === target.id && p2.isAlive) {
+                p2.isAlive = false;
+                addLog(`[${p2.name}] tự sát vì tình yêu.`, 'kill');
+            } else if (p2.id === target.id && p1.isAlive) {
+                p1.isAlive = false;
+                addLog(`[${p1.name}] tự sát vì tình yêu.`, 'kill');
+            }
+        }
+    }
+    
+    closeHunterModal();
+    renderPlayerSidebarList();
+    renderHangedSelector();
+    checkWinConditions();
+};
+
+window.skipHunterShoot = function() {
+    addLog(`Thợ Săn chọn không bắn ai.`, 'info');
+    closeHunterModal();
+    checkWinConditions();
+};
+
+function closeHunterModal() {
+    currentHunterId = null;
+    document.getElementById('hunter-modal').classList.remove('active');
 }
 
 // --- ĐỒNG HỒ HẸN GIỜ ---
@@ -2186,7 +2639,8 @@ function showVictoryModal(title, message, icon, color) {
 
 function resetAllGame() {
     pauseTimer();
-    showPhase('phase-setup');
+    gameState.ruleMode = null;
+    showPhase('phase-mode-select');
 
     gameState.players = [];
     gameState.logs = [];

@@ -1112,3 +1112,109 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
 .custom-select-item:hover {
     background: rgba(129, 140, 248, 0.2);
 }
+
+/* --- NEW CSS CHO PHASE 0 VÀ SCRIPT PANEL --- */
+.mode-select-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 20px;
+}
+
+.mode-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+    border: 2px solid transparent;
+}
+
+.mode-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    border-color: rgba(255,255,255,0.1);
+}
+
+#mode-international:hover {
+    border-color: var(--color-accent);
+    box-shadow: 0 10px 25px rgba(167, 139, 250, 0.2);
+}
+
+#mode-vietnam:hover {
+    border-color: var(--color-danger);
+    box-shadow: 0 10px 25px rgba(239, 68, 68, 0.2);
+}
+
+.mode-icon {
+    margin-bottom: 16px;
+    animation: float 3s ease-in-out infinite;
+}
+
+.mode-desc {
+    font-size: 0.9rem;
+    margin: 10px 0 20px 0;
+    min-height: 44px;
+}
+
+.mode-features {
+    list-style: none;
+    text-align: left;
+    width: 100%;
+    margin-bottom: auto;
+}
+
+.mode-features li {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+@media (max-width: 768px) {
+    .mode-select-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.moderator-script-panel {
+    border-left: 4px solid var(--color-accent);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+#day-script-panel {
+    border-left: 4px solid var(--color-warning);
+}
+
+.script-panel-header {
+    padding: 10px 15px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+}
+
+.script-panel-header:hover {
+    background: rgba(0,0,0,0.3);
+}
+
+.script-panel-body {
+    padding: 0 15px 15px 15px;
+    display: none;
+}
+
+.script-panel-body.open {
+    display: block;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.script-quote {
+    line-height: 1.5;
+}

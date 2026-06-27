@@ -68,9 +68,49 @@
 
             <!-- KHU VỰC TRUNG TÂM: NỘI DUNG CHÍNH (DYNAMIC PHASES) -->
             <main class="main-content">
+                <!-- PHASE 0: CHỌN CHẾ ĐỘ LUẬT -->
+                <section id="phase-mode-select" class="game-phase glass-panel active">
+                    <div class="phase-header text-center">
+                        <h2>Chọn Bộ Luật Chơi</h2>
+                        <p>Lựa chọn sẽ ảnh hưởng đến thứ tự gọi đêm, lời Quản Trò và một số luật đặc biệt.</p>
+                    </div>
+                    <div class="mode-select-grid mt-4">
+                        <div class="mode-card glass-panel-nested" id="mode-international" onclick="selectRuleMode('international')">
+                            <div class="mode-icon text-accent"><i data-lucide="globe" style="width: 48px; height: 48px;"></i></div>
+                            <h3>Luật Gốc Quốc Tế</h3>
+                            <p class="mode-desc text-muted">Theo rulebook chính thức "The Werewolves of Miller's Hollow" (Asmodee)</p>
+                            <ul class="mode-features">
+                                <li><i data-lucide="check" class="text-success" style="width:14px; height:14px;"></i> Tiên Tri gọi <strong>trước</strong> Ma Sói</li>
+                                <li><i data-lucide="check" class="text-success" style="width:14px; height:14px;"></i> Sói Trắng cắn mỗi đêm chẵn</li>
+                                <li><i data-lucide="check" class="text-success" style="width:14px; height:14px;"></i> Thứ tự chuẩn từ nhà sản xuất</li>
+                            </ul>
+                            <button class="btn btn-primary btn-large w-100 mt-3">Chọn luật này</button>
+                        </div>
+                        <div class="mode-card glass-panel-nested" id="mode-vietnam" onclick="selectRuleMode('vietnam')">
+                            <div class="mode-icon text-danger"><i data-lucide="flag" style="width: 48px; height: 48px;"></i></div>
+                            <h3>Luật Việt Nam</h3>
+                            <p class="mode-desc text-muted">Cách chơi quen thuộc phổ biến tại cộng đồng Việt Nam</p>
+                            <ul class="mode-features">
+                                <li><i data-lucide="check" class="text-success" style="width:14px; height:14px;"></i> Ma Sói gọi <strong>trước</strong> Tiên Tri</li>
+                                <li><i data-lucide="check" class="text-success" style="width:14px; height:14px;"></i> Già Làng xác nhận đêm đầu</li>
+                                <li><i data-lucide="check" class="text-success" style="width:14px; height:14px;"></i> Phù hợp chơi nhóm, team building</li>
+                            </ul>
+                            <button class="btn btn-accent btn-large w-100 mt-3">Chọn luật này</button>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- PHASE 1: CẤU HÌNH TRÒ CHƠI -->
-                <section id="phase-setup" class="game-phase glass-panel active">
-                    <div class="phase-header">
+                <section id="phase-setup" class="game-phase glass-panel">
+                    <div class="phase-header flex-between">
+                        <div>
+                            <h2>Bước 1: Thiết lập Trò chơi</h2>
+                            <p>Thêm người chơi và lựa chọn các chức năng tham gia.</p>
+                        </div>
+                        <div class="mode-badge" id="current-mode-badge" style="display:none; padding: 4px 12px; background: var(--panel-bg); border: 1px solid var(--color-accent); border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--color-accent);">
+                            Mode: Quốc Tế
+                        </div>
+                    </div>
                         <h2>Bước 1: Thiết lập Trò chơi</h2>
                         <p>Thêm người chơi và lựa chọn các chức năng tham gia.</p>
                     </div>
@@ -177,6 +217,24 @@
                         </div>
                     </div>
 
+                    <!-- Moderator Script Panel cho Đêm -->
+                    <div class="moderator-script-panel glass-panel-nested mt-3" id="moderator-script-panel">
+                        <div class="script-panel-header flex-between" style="cursor: pointer;" onclick="toggleScriptPanel('night')">
+                            <span style="font-weight: 600; color: var(--color-accent); display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="message-square" style="width:18px; height:18px;"></i> Lời Quản Trò gợi ý
+                            </span>
+                            <i data-lucide="chevron-down" id="script-panel-chevron-night" style="transition: transform 0.3s;"></i>
+                        </div>
+                        <div class="script-panel-body" id="script-panel-body-night" style="margin-top: 10px;">
+                            <div class="script-quote text-primary" id="script-main-quote" style="font-style: italic; background: rgba(0,0,0,0.2); padding: 10px; border-left: 3px solid var(--color-accent); border-radius: 4px; font-size: 0.95rem;">
+                                <!-- Câu gọi chính -->
+                            </div>
+                            <div class="script-note text-muted mt-2" id="script-note" style="font-size: 0.85rem;">
+                                <!-- Ghi chú cho Quản trò -->
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="setup-actions flex-between mt-4">
                         <button id="btn-skip-night" class="btn btn-secondary"><i data-lucide="eye-off"></i> Bỏ qua Đêm này</button>
                         <button id="btn-end-night" class="btn btn-accent btn-large">
@@ -240,6 +298,21 @@
                         </div>
                     </div>
 
+                    <!-- Moderator Script Panel cho Ngày -->
+                    <div class="moderator-script-panel glass-panel-nested mt-3" id="day-script-panel">
+                        <div class="script-panel-header flex-between" style="cursor: pointer;" onclick="toggleScriptPanel('day')">
+                            <span style="font-weight: 600; color: var(--color-warning); display: flex; align-items: center; gap: 8px;">
+                                <i data-lucide="mic" style="width:18px; height:18px;"></i> Lời tuyên bố Quản Trò
+                            </span>
+                            <i data-lucide="chevron-down" id="script-panel-chevron-day" style="transition: transform 0.3s;"></i>
+                        </div>
+                        <div class="script-panel-body" id="script-panel-body-day" style="margin-top: 10px;">
+                            <div class="script-quote text-primary" id="day-script-quote" style="font-style: italic; background: rgba(0,0,0,0.2); padding: 10px; border-left: 3px solid var(--color-warning); border-radius: 4px; font-size: 0.95rem; white-space: pre-line;">
+                                <!-- Nội dung tuyên bố ngày -->
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="setup-actions flex-between mt-3">
                         <button id="btn-next-night" class="btn btn-accent btn-large">Tiếp tục qua Đêm tiếp theo <i data-lucide="moon"></i></button>
                     </div>
@@ -276,6 +349,28 @@
         </div>
     </div>
 
+    <!-- MODAL THỢ SĂN BẮN -->
+    <div id="hunter-modal" class="modal" style="z-index: 2000;">
+        <div class="modal-content glass-panel animate-zoom" style="max-width: 400px; border-color: var(--color-warning);">
+            <div class="modal-header text-center">
+                <h2 class="font-cinzel text-warning"><i data-lucide="crosshair"></i> THỢ SĂN TRẢ THÙ!</h2>
+            </div>
+            <div class="modal-body">
+                <p class="text-center mb-3">Thợ Săn <strong id="hunter-player-name" class="text-warning"></strong> đã chết! Yêu cầu Thợ Săn lập tức chọn 1 người để kéo theo.</p>
+                <div class="vote-action-container flex-column">
+                    <select id="select-hunter-target" class="form-select w-100 mb-3">
+                        <option value="">-- Chọn người bị bắn --</option>
+                        <!-- Options render by JS -->
+                    </select>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-warning flex-1" onclick="confirmHunterShoot()"><i data-lucide="crosshair"></i> Bắn chết</button>
+                        <button class="btn btn-secondary flex-1" onclick="skipHunterShoot()">Bỏ qua</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL GIẢI THÍCH CHI TIẾT CHỨC NĂNG -->
     <div id="role-detail-modal" class="modal">
         <div class="modal-content glass-panel animate-zoom" style="max-width: 450px;">
@@ -299,16 +394,9 @@
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-close-rules" style="padding: 4px 8px;">X</button>
             </div>
             <div class="modal-body mt-2" style="max-height: 400px; overflow-y: auto; padding-right: 5px;">
-                <h4 style="font-size: 1rem; color: var(--color-accent); font-weight: 600;">Trình tự gọi đêm chuẩn mở rộng:</h4>
-                <ol class="rules-order-list" style="padding-left: 20px; font-size: 0.85rem; margin-top: 8px; margin-bottom: 16px; line-height: 1.6;">
-                    <li><strong>Cupid (Thần tình yêu):</strong> Ghép đôi 2 người (Chỉ đêm 1).</li>
-                    <li><strong>Bảo vệ:</strong> Chọn 1 người để bảo vệ khỏi Sói. Không bảo vệ trùng đêm trước.</li>
-                    <li><strong>Ma Sói & Sói Điên:</strong> Thống nhất cắn người. Sói Điên cắn thêm (nếu đủ điều kiện).</li>
-                    <li><strong>Sói Trắng:</strong> Thức dậy cắn 1 Ma Sói khác (2 đêm lẻ 1 lần).</li>
-                    <li><strong>Phù Thủy:</strong> Biết ai bị cắn, chọn cứu hoặc cắn độc (mỗi bình dùng 1 lần/game).</li>
-                    <li><strong>Tiên Tri:</strong> Soi 1 người để biết thuộc phe Sói hay phe Dân.</li>
-                    <li><strong>Hồ Ly:</strong> Soi 3 người đứng cạnh nhau để tìm Sói.</li>
-                    <li><strong>Người Thổi Sáo:</strong> Thôi miên 2 người chơi mới.</li>
+                <h4 id="rules-order-title" style="font-size: 1rem; color: var(--color-accent); font-weight: 600;">Trình tự gọi đêm:</h4>
+                <ol id="rules-order-list" class="rules-order-list" style="padding-left: 20px; font-size: 0.85rem; margin-top: 8px; margin-bottom: 16px; line-height: 1.6;">
+                    <!-- Sẽ được render bằng Javascript tùy mode -->
                 </ol>
                 
                 <h4 style="font-size: 1rem; color: var(--color-accent); font-weight: 600; margin-top: 12px;">Điều kiện thắng:</h4>
