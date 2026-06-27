@@ -718,6 +718,44 @@ function renderRulesModal() {
             <li><strong>Người Thổi Sáo:</strong> Thôi miên 2 người.</li>
         `;
     }
+
+    // Hiển thị phần giải thích vai trò đang có trong ván
+    const rolesExplainContainer = document.getElementById('rules-roles-explain-container');
+    const rolesExplainList = document.getElementById('rules-roles-explain-list');
+    
+    if (rolesExplainContainer && rolesExplainList) {
+        if (!gameState.players || gameState.players.length === 0) {
+            rolesExplainContainer.style.display = 'none';
+        } else {
+            rolesExplainContainer.style.display = 'block';
+            
+            // Lọc ra các vai trò unique có trong ván
+            const activeRoles = [...new Set(gameState.players.map(p => p.role))];
+            
+            rolesExplainList.innerHTML = '';
+            activeRoles.forEach(roleKey => {
+                const roleDef = ROLES_DEFINITION[roleKey];
+                if (roleDef) {
+                    const item = document.createElement('div');
+                    item.style.padding = '8px';
+                    item.style.background = 'rgba(0, 0, 0, 0.15)';
+                    item.style.borderRadius = '4px';
+                    item.style.borderLeft = `3px solid ${roleDef.color || '#ccc'}`;
+                    item.innerHTML = `
+                        <div style="font-weight: bold; color: ${roleDef.color || 'var(--text-primary)'}; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="${roleDef.icon || 'user'}" style="width: 14px; height: 14px;"></i>
+                            ${roleDef.name}
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">
+                            ${roleDef.desc}
+                        </div>
+                    `;
+                    rolesExplainList.appendChild(item);
+                }
+            });
+            lucide.createIcons();
+        }
+    }
 }
 
     const btnAddPlayer = document.getElementById('btn-add-player');

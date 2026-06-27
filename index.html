@@ -398,8 +398,15 @@
                 <ol id="rules-order-list" class="rules-order-list" style="padding-left: 20px; font-size: 0.85rem; margin-top: 8px; margin-bottom: 16px; line-height: 1.6;">
                     <!-- Sẽ được render bằng Javascript tùy mode -->
                 </ol>
+
+                <div id="rules-roles-explain-container" style="margin-top: 16px; border-top: 1px solid var(--panel-border); padding-top: 12px; display: none;">
+                    <h4 style="font-size: 1rem; color: var(--color-accent); font-weight: 600;">Các vai trò trong ván này:</h4>
+                    <div id="rules-roles-explain-list" style="font-size: 0.85rem; margin-top: 8px; line-height: 1.6; display: flex; flex-column; gap: 10px; flex-direction: column;">
+                        <!-- Render dynamic roles explanation here -->
+                    </div>
+                </div>
                 
-                <h4 style="font-size: 1rem; color: var(--color-accent); font-weight: 600; margin-top: 12px;">Điều kiện thắng:</h4>
+                <h4 style="font-size: 1rem; color: var(--color-accent); font-weight: 600; margin-top: 16px;">Điều kiện thắng chung:</h4>
                 <ul style="padding-left: 20px; font-size: 0.85rem; margin-top: 8px; line-height: 1.6;">
                     <li><strong>Phe Người tốt:</strong> Tiêu diệt toàn bộ Ma Sói và các phe thứ ba độc hại.</li>
                     <li><strong>Phe Ma Sói:</strong> Số lượng Ma Sói bằng hoặc nhiều hơn số người dân còn sống.</li>
