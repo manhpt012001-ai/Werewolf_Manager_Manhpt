@@ -1132,7 +1132,10 @@ function renderAssignTable() {
         `;
         Object.keys(ROLES_DEFINITION).forEach(roleKey => {
             const role = ROLES_DEFINITION[roleKey];
-            selectHtml += `<div class="custom-select-item" data-role="${roleKey}" data-name="${role.name.toLowerCase()}" onclick="window.selectPlayerRole('${player.id}', '${roleKey}')">${role.name}</div>`;
+            const count = gameState.selectedRoles[roleKey] || 0;
+            if (count > 0 || roleKey === 'villager') {
+                selectHtml += `<div class="custom-select-item" data-role="${roleKey}" data-name="${role.name.toLowerCase()}" onclick="window.selectPlayerRole('${player.id}', '${roleKey}')">${role.name}</div>`;
+            }
         });
         selectHtml += `</div></div>`;
 
@@ -1324,6 +1327,16 @@ function showPhase(phaseId) {
     if (phaseId === 'phase-assign') gameState.currentPhase = 'assign';
     if (phaseId === 'phase-night') gameState.currentPhase = 'night';
     if (phaseId === 'phase-day') gameState.currentPhase = 'day';
+
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+        // Chỉ khi thực sự vào ván chơi (Đêm hoặc Ngày) mới bật class game-active
+        if (phaseId === 'phase-night' || phaseId === 'phase-day') {
+            appContainer.classList.add('game-active');
+        } else {
+            appContainer.classList.remove('game-active');
+        }
+    }
 
     renderPlayerSidebarList();
 }

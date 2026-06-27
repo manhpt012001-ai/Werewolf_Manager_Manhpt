@@ -110,10 +110,24 @@ body {
 
 .app-layout {
     display: grid;
-    grid-template-columns: 280px 1fr 320px;
+    grid-template-columns: 1fr;
     gap: 12px;
     flex: 1;
     min-height: 0;
+}
+
+.sidebar-left,
+.sidebar-right {
+    display: none !important;
+}
+
+.app-container.game-active .sidebar-left,
+.app-container.game-active .sidebar-right {
+    display: flex !important;
+}
+
+.app-container.game-active .app-layout {
+    grid-template-columns: 280px 1fr 320px;
 }
 
 /* Glassmorphism Panel Base */
@@ -910,8 +924,9 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
         padding: 8px;
     }
     
-    .app-layout {
-        grid-template-columns: 1fr;
+    .app-layout, 
+    .app-container.game-active .app-layout {
+        grid-template-columns: 1fr !important;
         height: auto;
         gap: 20px;
     }
